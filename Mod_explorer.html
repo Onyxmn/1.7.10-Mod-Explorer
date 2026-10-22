@@ -1,0 +1,3638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GTNH Mod Explorer · 1.7.10</title>
+  <style>
+    :root {
+      --bg:#14161b; --p:#1d2027; --b:#2d313b; --t:#e4e6eb; --m:#8b919e;
+      --a:#5ec26a; --warn:#f5c26b; --err:#e06c6c; --ok:#8de09a;
+      --muted-2:#5a6070; --input-bg:#262a33; --hover-bg:#262a33;
+      --surface-2:#252932; --surface-3:#1c2027;
+      --row-border:#1a1d24; --tile-bg:#1a1d24; --pre-bg:#0d0f13;
+      --badge-bg:#2d313b; --btn-on-fg:#06220b;
+
+      --cv-font-size: 12px;
+      --cv-font-family: ui-monospace, 'Cascadia Code', 'Fira Code', Consolas, monospace;
+      --cv-tab-size: 4;
+    }
+    html[data-app-theme="light"] {
+      --bg:#f5f7fa; --p:#ffffff; --b:#d4d8de; --t:#1d1f23; --m:#6a7078;
+      --a:#2a9d3f; --warn:#b07000; --err:#c23a3a; --ok:#1e6b2c;
+      --muted-2:#9aa0a6; --input-bg:#f0f2f5; --hover-bg:#e8ecf0;
+      --surface-2:#f5f7fa; --surface-3:#eef1f5;
+      --row-border:#e4e7eb; --tile-bg:#f0f2f5; --pre-bg:#f6f8fa;
+      --badge-bg:#e4e7eb; --btn-on-fg:#ffffff;
+    }
+    html[data-app-theme="solarized"] {
+      --bg:#002b36; --p:#073642; --b:#0a4a5e; --t:#93a1a1; --m:#657b83;
+      --a:#859900; --warn:#b58900; --err:#dc322f; --ok:#93c91a;
+      --muted-2:#586e75; --input-bg:#073642; --hover-bg:#0a4a5e;
+      --surface-2:#073642; --surface-3:#00212b;
+      --row-border:#073642; --tile-bg:#073642; --pre-bg:#001f27;
+      --badge-bg:#073642; --btn-on-fg:#fdf6e3;
+    }
+    html[data-app-theme="monokai"] {
+      --bg:#272822; --p:#2d2e27; --b:#49483e; --t:#f8f8f2; --m:#a0a09a;
+      --a:#a6e22e; --warn:#fd971f; --err:#f92672; --ok:#a6e22e;
+      --muted-2:#75715e; --input-bg:#3a3a34; --hover-bg:#49483e;
+      --surface-2:#3a3a34; --surface-3:#1e1f1a;
+      --row-border:#3e3d32; --tile-bg:#3a3a34; --pre-bg:#1e1f1a;
+      --badge-bg:#49483e; --btn-on-fg:#272822;
+    }
+    html[data-app-theme="light"] .badge.parsed { background:#d5f5dc; color:#1e6b2c; }
+    html[data-app-theme="light"] .badge.raw    { background:#fdf3d0; color:#8a5a00; }
+    html[data-app-theme="light"] .badge.fail   { background:#fadcdc; color:#a02020; }
+    html[data-app-theme="light"] .badge.link   { background:#dbe9f5; color:#1e5a8a; }
+
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--t); font:14px system-ui,sans-serif;
+           transition: background-color .15s, color .15s; }
+    header { display:flex; gap:8px; padding:8px 12px; background:var(--p);
+             border-bottom:1px solid var(--b); flex-wrap:wrap; align-items:center; }
+    header b { margin-right:8px; }
+    button, input, select, textarea { font:inherit; color:var(--t); background:var(--input-bg);
+             border:1px solid var(--b); border-radius:6px; padding:6px 8px; }
+    button { cursor:pointer; } button:hover { border-color:var(--a); }
+    button.on { background:var(--a); color:var(--btn-on-fg); border-color:var(--a); }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+    main { display:flex; min-height:calc(100vh - 50px); }
+    aside { width:240px; border-right:1px solid var(--b); padding:10px;
+            background:var(--p); overflow-y:auto; }
+    aside button { display:block; width:100%; text-align:left; margin-bottom:4px; }
+    section { flex:1; padding:16px; max-width:1100px; }
+    label { display:block; margin:0 0 10px; color:var(--m); font-size:12px; }
+    label input, label select, label textarea {
+      display:block; width:100%; margin-top:3px; color:var(--t); font-size:14px;
+    }
+    label.c { display:flex; gap:8px; align-items:center; }
+    label.c input { width:auto; margin:0; }
+    textarea { font-family:ui-monospace,monospace; font-size:12px; white-space:pre; min-height:100px; }
+    .g { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:0 12px; }
+    h3 { margin:14px 0 8px; }
+    .note { color:var(--m); font-size:12px; margin:6px 0 12px; }
+    .del { border-color:#a44; color:#f99; }
+    pre { background:var(--pre-bg); border:1px solid var(--b); padding:10px; overflow:auto;
+          max-height:480px; font-size:12px; white-space:pre-wrap; word-break:break-word; }
+    .files { max-height:300px; overflow:auto; border:1px solid var(--b); border-radius:6px; }
+    .files div { padding:4px 10px; cursor:pointer; font:12px ui-monospace,monospace;
+                 border-bottom:1px solid var(--row-border); display:flex; gap:6px; align-items:center; }
+    .files div:hover { background:var(--hover-bg); }
+    .files div .path { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .warn { color:var(--warn); } .err { color:var(--err); } .ok { color:var(--ok); }
+    .badge { display:inline-block; padding:1px 6px; border-radius:4px; font-size:11px;
+             background:var(--badge-bg); color:var(--m); margin-left:6px; flex-shrink:0; }
+    .badge.parsed { background:#1e3a22; color:#8de09a; }
+    .badge.raw { background:#3a2e1e; color:#f5c26b; }
+    .badge.fail { background:#3a1e1e; color:#f59a9a; }
+    .badge.link { background:#1e2a3a; color:#9ad0f5; }
+    .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .small { font-size:12px; }
+    .src { font-family:ui-monospace,monospace; font-size:11px; color:var(--m); }
+
+    .sort-bar { display: flex; gap: 4px; align-items: center; margin-bottom: 6px; }
+    .sort-bar .sort-label { color: var(--m); font-size: 11px; padding-right: 4px; user-select: none; }
+    .sort-bar button { padding: 3px 4px; font-size: 11px; flex: 1; min-width: 0;
+      text-align: center; background: var(--input-bg); color: var(--t);
+      border: 1px solid var(--b); border-radius: 4px; cursor: pointer; font-weight: normal; }
+    .sort-bar button:hover { border-color: var(--a); }
+    .sort-bar button.on { background: var(--a); color: var(--btn-on-fg); border-color: var(--a); }
+
+    .texture-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+      gap: 10px; margin: 6px 0 14px;
+    }
+    .texture-tile {
+      background: var(--tile-bg); border: 1px solid var(--b); border-radius: 6px;
+      padding: 8px; cursor: pointer; text-align: center;
+      transition: border-color .1s, background .1s, transform .1s;
+    }
+    .texture-tile:hover { border-color: var(--a); background: var(--hover-bg); transform: translateY(-1px); }
+    .texture-thumb {
+      width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+      border-radius: 4px; margin-bottom: 6px; overflow: hidden;
+      background-color: var(--pre-bg);
+      background-image:
+        linear-gradient(45deg, rgba(127,127,127,0.18) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(127,127,127,0.18) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, rgba(127,127,127,0.18) 75%),
+        linear-gradient(-45deg, transparent 75%, rgba(127,127,127,0.18) 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+    }
+    .texture-thumb img {
+      width: 100%; height: 100%; object-fit: contain;
+      image-rendering: pixelated; image-rendering: crisp-edges;
+      padding: 8px; box-sizing: border-box;
+    }
+    .texture-thumb img.broken { opacity: .25; }
+    .texture-thumb canvas {
+      width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated;
+      padding: 8px; box-sizing: border-box;
+    }
+    .texture-name { font-size: 11px; color: var(--m); word-break: break-all; line-height: 1.3; }
+    .texture-name.exact { color: var(--ok); }
+
+
+    /* ---- Disclaimer ---- */
+    #disclaimer { position: fixed; inset: 0; z-index: 5000; background: rgba(0,0,0,.85);
+      display: flex; align-items: center; justify-content: center; padding: 16px; }
+    #disclaimer .box { background: var(--p); color: var(--t); border: 2px solid var(--err);
+      border-radius: 12px; padding: 28px 32px; max-width: 520px; text-align: center;
+      box-shadow: 0 12px 48px rgba(0,0,0,.7); }
+    #disclaimer .icon { font-size: 40px; line-height: 1; margin-bottom: 12px; }
+    #disclaimer p { margin: 0 0 22px; font-size: 20px; font-weight: 700; line-height: 1.35; white-space: pre-wrap; }
+    #disclaimer button { padding: 8px 24px; font-size: 15px; background: var(--err);
+      color: #fff; border-color: var(--err); }
+    #disclaimer button:hover, #disclaimer button:focus-visible { outline: 2px solid var(--t); outline-offset: 2px; }
+
+    /* ---- Search ---- */
+    .side-search { width:100%; margin:0 0 4px; }
+    .side-count { color:var(--m); font-size:11px; margin:0 0 6px; user-select:none; }
+    .list-filter { display:flex; gap:8px; align-items:center; margin:0 0 10px; }
+    .list-filter input { flex:1; }
+    .list-filter .side-count { margin:0; white-space:nowrap; }
+    #gsWrap { position:relative; flex:1 1 280px; max-width:440px; min-width:180px; }
+    #globalSearch { width:100%; padding-right:44px; }
+    #gsHint { position:absolute; right:8px; top:50%; transform:translateY(-50%); font-size:10px;
+              color:var(--m); border:1px solid var(--b); border-radius:4px; padding:0 4px;
+              pointer-events:none; background:var(--p); }
+    #gsResults { position:absolute; left:0; top:calc(100% + 6px); width:max(100%, 480px);
+                 max-width:calc(100vw - 24px); max-height:70vh; overflow-y:auto; z-index:1500;
+                 background:var(--p); border:1px solid var(--b); border-radius:8px;
+                 box-shadow:0 8px 30px rgba(0,0,0,.55); display:none; }
+    #gsResults.open { display:block; }
+    .gs-group { padding:6px 10px 4px; font-size:11px; font-weight:600; color:var(--m);
+                text-transform:uppercase; letter-spacing:.04em; background:var(--surface-2);
+                border-top:1px solid var(--b); position:sticky; top:0; }
+    .gs-group:first-child { border-top:0; }
+    .gs-item { display:flex; gap:8px; align-items:center; padding:5px 10px; cursor:pointer;
+               border-bottom:1px solid var(--row-border); }
+    .gs-item.active, .gs-item:hover { background:var(--hover-bg); }
+    .gs-item.active { box-shadow:inset 3px 0 0 var(--a); }
+    .gs-main { flex:1; min-width:0; }
+    .gs-label { font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .gs-sub { font:11px ui-monospace,monospace; color:var(--m); overflow:hidden;
+              text-overflow:ellipsis; white-space:nowrap; }
+    .gs-thumb { width:28px; height:28px; flex-shrink:0; border-radius:3px; background:var(--pre-bg);
+                image-rendering:pixelated; object-fit:contain; }
+    .gs-more { color:var(--a); font-size:12px; }
+    .gs-empty { padding:14px; color:var(--m); text-align:center; font-size:13px; }
+    mark.gs-hl { background:rgba(94,194,106,.28); color:inherit; border-radius:2px; padding:0 1px; }
+
+    .relations { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:12px; }
+    .rel-chip { display:inline-flex; align-items:center; gap:6px; padding:4px 8px;
+      background: var(--input-bg); border:1px solid var(--b); border-radius:4px;
+      font-size:11px; cursor:pointer; font-family:ui-monospace,monospace; max-width:100%; }
+    .rel-chip:hover { border-color:var(--a); background: var(--hover-bg); }
+    .rel-chip .rel-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .rel-chip .badge { margin-left:2px; }
+
+    #logToggle { position:fixed; bottom:12px; right:12px; z-index:999; border-radius:20px;
+                 padding:6px 14px; background:var(--p); box-shadow:0 2px 8px rgba(0,0,0,.45);
+                 font-size:13px; }
+    #logToggle.err { border-color:var(--err); color:var(--err); }
+    #logToggle .badge { margin-left:4px; }
+    #logPanel { position:fixed; bottom:56px; right:12px; width:480px;
+                max-width:calc(100vw - 24px); height:50vh; max-height:560px;
+                background:var(--p); border:1px solid var(--b); border-radius:8px;
+                box-shadow:0 6px 28px rgba(0,0,0,.7); z-index:1000; display:none;
+                flex-direction:column; overflow:hidden; }
+    #logPanel.open { display:flex; }
+    .logHeader { display:flex; gap:6px; align-items:center; padding:8px;
+                 border-bottom:1px solid var(--b); background: var(--surface-2); font-size:13px; }
+    .logHeader b { margin-right:4px; }
+    .logHeader button { padding:2px 8px; font-size:12px; }
+    #logBody { flex:1; overflow-y:auto; font:11px ui-monospace,monospace; padding:4px 8px;
+               background: var(--pre-bg); }
+    .logEntry { padding:3px 0; border-bottom:1px solid var(--row-border); word-break:break-word;
+                white-space:pre-wrap; }
+    .logEntry.err { color:var(--err); } .logEntry.warn { color:var(--warn); }
+    .logEntry.ok { color:var(--ok); } .logEntry.dim { color:var(--muted-2); }
+    .logTime { color:var(--muted-2); margin-right:6px; }
+
+    .code-viewer {
+      --cv-bg: #0d0f13; --cv-fg: #e4e6eb;
+      --cv-gutter-fg: #5a6070; --cv-gutter-border: #2d313b;
+      --cv-line-hover: #1a1d24;
+      --cv-fold-head-bg: #171a20; --cv-fold-head-hover: #232730;
+      --cv-border: #2d313b;
+      --cv-kw: #c586c0; --cv-type: #4ec9b0; --cv-str: #ce9178;
+      --cv-num: #b5cea8; --cv-comment: #6a9955; --cv-ann: #dcdcaa;
+      --cv-fn: #dcdcaa; --cv-op: #d4d4d4; --cv-var: #9cdcfe;
+    }
+    .code-viewer[data-theme="light"] {
+      --cv-bg: #ffffff; --cv-fg: #1d1f23;
+      --cv-gutter-fg: #9aa0a6; --cv-gutter-border: #e4e7eb;
+      --cv-line-hover: #f2f4f7;
+      --cv-fold-head-bg: #f5f7fa; --cv-fold-head-hover: #e9edf2;
+      --cv-border: #d4d8de;
+      --cv-kw: #0000ff; --cv-type: #267f99; --cv-str: #a31515;
+      --cv-num: #098658; --cv-comment: #008000; --cv-ann: #808000;
+      --cv-fn: #795e26; --cv-op: #1d1f23; --cv-var: #001080;
+    }
+    .code-viewer[data-theme="solarized"] {
+      --cv-bg: #002b36; --cv-fg: #839496;
+      --cv-gutter-fg: #586e75; --cv-gutter-border: #073642;
+      --cv-line-hover: #073642;
+      --cv-fold-head-bg: #073642; --cv-fold-head-hover: #0a4a5e;
+      --cv-border: #0a4a5e;
+      --cv-kw: #859900; --cv-type: #b58900; --cv-str: #2aa198;
+      --cv-num: #d33682; --cv-comment: #586e75; --cv-ann: #cb4b16;
+      --cv-fn: #268bd2; --cv-op: #839496; --cv-var: #93a1a1;
+    }
+    .code-viewer[data-theme="monokai"] {
+      --cv-bg: #272822; --cv-fg: #f8f8f2;
+      --cv-gutter-fg: #75715e; --cv-gutter-border: #3e3d32;
+      --cv-line-hover: #3e3d32;
+      --cv-fold-head-bg: #3a3a34; --cv-fold-head-hover: #4a4940;
+      --cv-border: #3e3d32;
+      --cv-kw: #f92672; --cv-type: #66d9ef; --cv-str: #e6db74;
+      --cv-num: #ae81ff; --cv-comment: #75715e; --cv-ann: #a6e22e;
+      --cv-fn: #a6e22e; --cv-op: #f8f8f2; --cv-var: #f8f8f2;
+    }
+    .code-viewer {
+      background: var(--cv-bg); color: var(--cv-fg);
+      border: 1px solid var(--cv-border); border-radius: 6px;
+      overflow: hidden; font-family: var(--cv-font-family);
+      font-size: var(--cv-font-size);
+      display: flex; flex-direction: column; max-height: 560px;
+    }
+    .code-viewer-toolbar {
+      display: flex; align-items: center; gap: 6px; padding: 6px 8px;
+      background: var(--p); border-bottom: 1px solid var(--b);
+      font-family: system-ui, sans-serif; font-size: 12px;
+    }
+    .code-viewer-toolbar .path {
+      font-family: ui-monospace, monospace; color: var(--m);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40em;
+    }
+    .code-viewer-toolbar button {
+      padding: 3px 8px; font-size: 12px; background: var(--input-bg);
+      color: var(--t); border: 1px solid var(--b); border-radius: 4px;
+    }
+    .code-viewer-toolbar button:hover { border-color: var(--a); }
+    .code-viewer-body {
+      overflow: auto; padding: 4px 0; tab-size: var(--cv-tab-size);
+      flex: 1 1 auto; min-height: 0;
+    }
+    .code-viewer.word-wrap .code-viewer-body { overflow-x: hidden; }
+    .code-line {
+      display: flex; align-items: stretch; white-space: pre;
+      min-height: 1.5em; line-height: 1.5em; padding: 0 8px 0 0;
+    }
+    .code-viewer.word-wrap .code-line { white-space: pre-wrap; word-break: break-word; }
+    .code-line:hover { background: var(--cv-line-hover); }
+    .code-ln {
+      display: inline-block; color: var(--cv-gutter-fg);
+      min-width: 3em; text-align: right; padding-right: 10px; margin-right: 8px;
+      border-right: 1px solid var(--cv-gutter-border);
+      user-select: none; flex-shrink: 0;
+    }
+    .code-content { flex: 1; min-width: 0; }
+    .tok-keyword    { color: var(--cv-kw); }
+    .tok-type       { color: var(--cv-type); }
+    .tok-string, .tok-char { color: var(--cv-str); }
+    .tok-number     { color: var(--cv-num); }
+    .tok-comment    { color: var(--cv-comment); font-style: italic; }
+    .tok-annotation { color: var(--cv-ann); }
+    .tok-function   { color: var(--cv-fn); }
+    .tok-op         { color: var(--cv-op); }
+    .tok-ident      { color: var(--cv-var); }
+    .code-region { display: block; }
+    .code-region-head {
+      display: flex; align-items: stretch;
+      background: var(--cv-fold-head-bg); cursor: pointer; user-select: none;
+    }
+    .code-region-head:hover { background: var(--cv-fold-head-hover); }
+    .code-region-head .code-line:hover { background: transparent; }
+    .code-fold-toggle {
+      background: transparent; border: none; color: var(--cv-gutter-fg);
+      width: 1.5em; padding: 0; font-size: 11px; line-height: 1;
+      cursor: pointer; flex-shrink: 0; align-self: center;
+    }
+    .code-fold-toggle::before { content: '▾'; }
+    .code-region.folded > .code-region-head .code-fold-toggle::before { content: '▸'; }
+    .code-region.folded > .code-region-head::after {
+      content: '   … (' attr(data-lines-hidden) ' lines)';
+      color: var(--cv-comment); font-style: italic; align-self: center;
+      padding-right: 8px; opacity: 0.75;
+    }
+    .code-region-body { display: block; }
+    .code-region.folded > .code-region-body { display: none; }
+    .code-region.imports > .code-region-head { background: transparent; }
+    .code-region.imports > .code-region-head:hover { background: var(--cv-line-hover); }
+    .code-region.imports > .code-region-head .code-line { color: var(--cv-comment); font-style: italic; }
+
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 2000;
+      display: flex; align-items: center; justify-content: center; }
+    .modal-overlay[hidden] { display: none; }
+    .modal { background: var(--p); border: 1px solid var(--b); border-radius: 10px;
+      width: 92%; max-width: 560px; max-height: 90vh;
+      display: flex; flex-direction: column; box-shadow: 0 10px 40px rgba(0,0,0,.7); }
+    .modal-header { display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+      border-bottom: 1px solid var(--b); background: var(--surface-2); }
+    .modal-header b { flex: 1; }
+    .modal-body { padding: 14px; overflow-y: auto; }
+    .modal-body .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+    .modal-footer { display: flex; gap: 6px; justify-content: flex-end;
+      padding: 10px 14px; border-top: 1px solid var(--b); background: var(--surface-3); }
+    .settings-section {
+      margin: 0 0 10px; font-size: 12px; color: var(--m);
+      text-transform: uppercase; letter-spacing: .06em; font-weight: 600;
+    }
+    .settings-note { color: var(--m); font-size: 11px; margin: 4px 0 12px; line-height: 1.4; }
+
+    .theme-swatches { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 0 0 14px; }
+    .theme-swatch { display: flex; flex-direction: column; align-items: stretch; gap: 6px;
+      padding: 8px; background: var(--input-bg); border: 2px solid var(--b);
+      border-radius: 6px; cursor: pointer; font-size: 11px; font-family: inherit;
+      color: var(--t); transition: border-color .1s, background .1s; }
+    .theme-swatch:hover { border-color: var(--a); }
+    .theme-swatch.on { border-color: var(--a); }
+    .theme-swatch .swatch-preview { display: flex; height: 36px; border-radius: 4px;
+      overflow: hidden; border: 1px solid rgba(0,0,0,.25); }
+    .theme-swatch span { text-align: center; }
+
+    #fileModal .modal { max-width: 1200px; height: 90vh; }
+    #fileModal .modal-body { padding: 0; overflow: hidden; display: flex; flex-direction: column; flex: 1; }
+    #fileModalRefs { padding: 8px 10px; border-bottom: 1px solid var(--b);
+      display: flex; gap: 6px; align-items: center; flex-wrap: wrap; background: var(--surface-3);
+      flex: 0 0 auto; max-height: 18vh; overflow-y: auto; overscroll-behavior: contain; }
+    #fileModalViewerHost { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+    #fileModalViewerHost > .code-viewer {
+      flex: 1; max-height: none; height: 100%; border-radius: 0; border: none; min-height: 0;
+    }
+
+    /* go-to-definition */
+    .code-viewer-body .sym { cursor: pointer; }
+    .code-viewer-body .sym:hover { text-decoration: underline dotted; text-underline-offset: 2px; }
+    .target-line { background: rgba(94,194,106,.16); box-shadow: inset 3px 0 0 var(--a); }
+    .target-line.flash { animation: symFlash 1.4s ease-out; }
+    @keyframes symFlash { 0% { background: rgba(94,194,106,.55); } 100% { background: rgba(94,194,106,.16); } }
+    #symToast { position: fixed; left: 50%; bottom: 64px; transform: translateX(-50%); z-index: 3500;
+      background: var(--p); color: var(--t); border: 1px solid var(--b); border-radius: 8px;
+      padding: 8px 14px; font-size: 13px; box-shadow: 0 6px 24px rgba(0,0,0,.55);
+      max-width: calc(100vw - 32px); display: none; }
+    #symToast.show { display: block; }
+    #symPicker { position: fixed; z-index: 3000; background: var(--p); border: 1px solid var(--b);
+      border-radius: 8px; box-shadow: 0 8px 30px rgba(0,0,0,.6); min-width: 280px; max-width: 560px;
+      max-height: 50vh; overflow-y: auto; display: none; }
+    #symPicker.show { display: block; }
+    .sym-pick-title { padding: 6px 10px; font-size: 11px; color: var(--m); background: var(--surface-2);
+      border-bottom: 1px solid var(--b); position: sticky; top: 0; }
+    .sym-opt { padding: 6px 10px; cursor: pointer; border-bottom: 1px solid var(--row-border); }
+    .sym-opt:hover { background: var(--hover-bg); }
+    .sym-opt-h { font-size: 12px; font-weight: 600; }
+    .sym-opt-t { font: 11px ui-monospace, monospace; color: var(--m); overflow: hidden;
+      text-overflow: ellipsis; white-space: nowrap; }
+
+    #textureModal .modal { max-width: 640px; }
+    #textureModalBody { display: flex; flex-direction: column; align-items: stretch; gap: 10px; }
+    #textureModalZoomBar { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; justify-content: center; }
+    #textureModalZoomBar .small { color: var(--m); padding: 0 4px; }
+    #textureModalZoomBar button {
+      padding: 3px 9px; font-size: 12px; background: var(--input-bg); color: var(--t);
+      border: 1px solid var(--b); border-radius: 4px;
+    }
+    #textureModalZoomBar button:hover { border-color: var(--a); }
+    #textureModalZoomBar button.on { background: var(--a); color: var(--btn-on-fg); border-color: var(--a); }
+    #textureModalDims { color: var(--m); font-size: 11px; font-variant-numeric: tabular-nums; }
+    #textureModalImgWrap {
+      width: 100%; aspect-ratio: 1 / 1; max-height: 55vh;
+      display: flex;
+      border-radius: 6px; overflow: auto;
+      background-color: var(--pre-bg);
+      background-image:
+        linear-gradient(45deg, rgba(127,127,127,0.20) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(127,127,127,0.20) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, rgba(127,127,127,0.20) 75%),
+        linear-gradient(-45deg, transparent 75%, rgba(127,127,127,0.20) 75%);
+      background-size: 24px 24px;
+      background-position: 0 0, 0 12px, 12px -12px, -12px 0;
+    }
+    #textureModalImg, #textureModalCanvas {
+      display: block; flex: none; margin: auto;
+      image-rendering: pixelated; image-rendering: crisp-edges;
+    }
+    #textureModalImg[hidden], #textureModalCanvas[hidden] { display: none; }
+    #textureModalAnimBar { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; justify-content: center; }
+    #textureModalAnimBar[hidden] { display: none; }
+    #textureModalAnimBar button {
+      padding: 3px 9px; font-size: 12px; background: var(--input-bg); color: var(--t);
+      border: 1px solid var(--b); border-radius: 4px;
+    }
+    #textureModalAnimBar button:hover { border-color: var(--a); }
+    #textureModalAnimBar button.on { background: var(--a); color: var(--btn-on-fg); border-color: var(--a); }
+    #texFrameInfo { color: var(--m); font-size: 11px; font-variant-numeric: tabular-nums; padding: 0 6px; }
+    #textureModalPath { width: 100%; word-break: break-all; text-align: center; }
+    #textureModalMeta { display: flex; gap: 8px; width: 100%; justify-content: center; }
+
+    /* cached repos modal */
+    #cachedModal .modal { max-width: 780px; }
+    #cachedModalBody { padding: 10px 14px; }
+    .cached-total { color: var(--m); font-size: 12px; margin: 0 0 10px; }
+    .cached-list { display: flex; flex-direction: column; gap: 6px; }
+    .cached-row {
+      display: flex; gap: 10px; align-items: center; padding: 10px;
+      background: var(--surface-2); border: 1px solid var(--b); border-radius: 6px;
+    }
+    .cached-info { flex: 1; min-width: 0; }
+    .cached-name {
+      font-weight: 600; margin-bottom: 3px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .cached-meta { color: var(--m); font-size: 11px; line-height: 1.5; }
+    .cached-actions { display: flex; gap: 4px; flex-shrink: 0; }
+    .cached-actions button { padding: 4px 10px; font-size: 12px; }
+    .cached-empty { color: var(--m); padding: 20px; text-align: center; }
+  </style>
+</head>
+<body>
+
+<div id="disclaimer" role="alertdialog" aria-modal="true" aria-labelledby="disclaimerText">
+  <div class="box">
+    <div class="icon">⚠️</div>
+    <p id="disclaimerText">This is SLOP.  It was made entirely by LLMs. DO NOT TRUST IT.</p>
+    <button id="disclaimerOk" type="button">I understand</button>
+  </div>
+</div>
+
+<header>
+  <b>⛏ GTNH Mod Explorer · 1.7.10</b>
+  <span id="status" class="small"></span>
+  <div id="gsWrap">
+    <input id="globalSearch" type="search" autocomplete="off" spellcheck="false"
+           placeholder="Search everything…" aria-label="Global search">
+    <span id="gsHint">Ctrl K</span>
+    <div id="gsResults" role="listbox"></div>
+  </div>
+  <span style="margin-left:auto; display:flex; gap:6px; align-items:center;">
+    <input id="repoUrl" type="url" placeholder="https://github.com/Owner/Repo" style="width:300px;">
+    <button id="exploreBtn" class="on">🔍 Explore</button>
+    <button id="cachedBtn" title="Cached repositories">📦 Cached<span id="cachedCount" class="badge">0</span></button>
+    <button id="saveBtn">💾 Save</button>
+    <button id="openBtn">📂 Open</button>
+    <button id="settingsBtn" title="Settings">⚙ Settings</button>
+    <input id="openFile" type="file" accept=".json" hidden>
+    <input id="importCacheFile" type="file" accept=".json" hidden>
+  </span>
+</header>
+
+<main>
+  <aside id="side"></aside>
+  <section id="form"></section>
+</main>
+
+<button id="logToggle">📋 Logs<span id="logCount" class="badge">0</span></button>
+<div id="logPanel" role="dialog" aria-label="Logs">
+  <div class="logHeader">
+    <b>Logs</b>
+    <button id="logClear">Clear</button>
+    <button id="logCopy">Copy</button>
+    <button id="logClose" style="margin-left:auto;">✕</button>
+  </div>
+  <div id="logBody"></div>
+</div>
+
+<div id="settingsPanel" class="modal-overlay" hidden>
+  <div class="modal">
+    <div class="modal-header">
+      <b>Settings</b>
+      <button id="settingsClose" style="padding:2px 10px;">✕</button>
+    </div>
+    <div class="modal-body">
+      <h4 class="settings-section">Appearance</h4>
+      <label>App theme</label>
+      <div class="theme-swatches" id="sAppTheme">
+        <button class="theme-swatch" data-apptheme="dark" type="button">
+          <div class="swatch-preview">
+            <div style="background:#14161b;flex:2"></div>
+            <div style="background:#1d2027;flex:1"></div>
+            <div style="background:#2d313b;flex:1"></div>
+            <div style="background:#5ec26a;flex:0 0 20%"></div>
+          </div>
+          <span>Dark</span>
+        </button>
+        <button class="theme-swatch" data-apptheme="light" type="button">
+          <div class="swatch-preview">
+            <div style="background:#f5f7fa;flex:2"></div>
+            <div style="background:#ffffff;flex:1"></div>
+            <div style="background:#d4d8de;flex:1"></div>
+            <div style="background:#2a9d3f;flex:0 0 20%"></div>
+          </div>
+          <span>Light</span>
+        </button>
+        <button class="theme-swatch" data-apptheme="solarized" type="button">
+          <div class="swatch-preview">
+            <div style="background:#002b36;flex:2"></div>
+            <div style="background:#073642;flex:1"></div>
+            <div style="background:#0a4a5e;flex:1"></div>
+            <div style="background:#859900;flex:0 0 20%"></div>
+          </div>
+          <span>Solarized</span>
+        </button>
+        <button class="theme-swatch" data-apptheme="monokai" type="button">
+          <div class="swatch-preview">
+            <div style="background:#272822;flex:2"></div>
+            <div style="background:#2d2e27;flex:1"></div>
+            <div style="background:#49483e;flex:1"></div>
+            <div style="background:#a6e22e;flex:0 0 20%"></div>
+          </div>
+          <span>Monokai</span>
+        </button>
+      </div>
+      <p class="settings-note">App theme affects the whole page. The code viewer theme is independent — you can pick any combination.</p>
+
+      <hr style="border-color:var(--b);margin:14px 0">
+
+      <h4 class="settings-section">Code viewer</h4>
+      <div class="row2">
+        <label>Theme
+          <select id="sTheme">
+            <option value="dark">Dark</option>
+            <option value="light">Light</option>
+            <option value="solarized">Solarized Dark</option>
+            <option value="monokai">Monokai</option>
+          </select>
+        </label>
+        <label>Font size
+          <input type="number" id="sFontSize" min="10" max="22" step="1">
+        </label>
+      </div>
+      <label>Font family
+        <select id="sFontFamily">
+          <option value="ui-monospace, 'Cascadia Code', 'Fira Code', Consolas, monospace">Default mono</option>
+          <option value="'Fira Code', ui-monospace, monospace">Fira Code</option>
+          <option value="'JetBrains Mono', ui-monospace, monospace">JetBrains Mono</option>
+          <option value="'Cascadia Code', ui-monospace, monospace">Cascadia Code</option>
+          <option value="Consolas, ui-monospace, monospace">Consolas</option>
+          <option value="Monaco, ui-monospace, monospace">Monaco</option>
+        </select>
+      </label>
+      <div class="row2">
+        <label>Folding
+          <select id="sFolds">
+            <option value="off">Off</option>
+            <option value="classes">Classes & interfaces only</option>
+            <option value="classes-methods">Classes + methods</option>
+            <option value="all">All blocks</option>
+          </select>
+        </label>
+        <label>Minimum fold size (lines)
+          <input type="number" id="sMinFold" min="2" max="30" step="1">
+        </label>
+      </div>
+      <label class="c"><input type="checkbox" id="sCollapseImports"> Collapse import block</label>
+      <label class="c"><input type="checkbox" id="sLineNumbers"> Show line numbers</label>
+      <label class="c"><input type="checkbox" id="sWordWrap"> Word wrap</label>
+      <label class="c"><input type="checkbox" id="sHighlight"> Syntax highlighting</label>
+      <div class="row2">
+        <label class="c"><input type="checkbox" id="sAutoFold"> Auto-fold large blocks</label>
+        <label>Auto-fold threshold (lines)
+          <input type="number" id="sAutoFoldN" min="10" max="500" step="5">
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="settingsReset">Reset to defaults</button>
+      <button id="settingsDone" class="on">Done</button>
+    </div>
+  </div>
+</div>
+
+<div id="fileModal" class="modal-overlay" hidden>
+  <div class="modal">
+    <div class="modal-header">
+      <button id="fileModalBack" style="display:none;padding:3px 10px;font-size:12px" title="Back (Alt+←)">← Back</button>
+      <b id="fileModalTitle" style="font-family:ui-monospace,monospace;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></b>
+      <button id="fileModalGoto" style="display:none;padding:3px 10px;font-size:12px">Go to entry →</button>
+      <button id="fileModalClose" style="padding:3px 10px">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="fileModalRefs"></div>
+      <div id="fileModalViewerHost"></div>
+    </div>
+  </div>
+</div>
+
+<div id="textureModal" class="modal-overlay" hidden>
+  <div class="modal">
+    <div class="modal-header">
+      <b id="textureModalTitle"></b>
+      <button id="textureModalClose" style="padding:3px 10px">✕</button>
+    </div>
+    <div class="modal-body" id="textureModalBody">
+      <div id="textureModalZoomBar">
+        <span id="textureModalDims"></span>
+        <span class="small">·</span>
+        <span class="small">Zoom</span>
+        <button data-texzoom="fit" class="on">Fit</button>
+        <button data-texzoom="1">1×</button>
+        <button data-texzoom="2">2×</button>
+        <button data-texzoom="4">4×</button>
+        <button data-texzoom="8">8×</button>
+        <button data-texzoom="16">16×</button>
+        <button data-texzoom="32">32×</button>
+      </div>
+      <div id="textureModalAnimBar" hidden>
+        <button id="texPlay" class="on" title="Play / pause">⏸ Pause</button>
+        <button id="texPrev" title="Previous frame">◀</button>
+        <button id="texNext" title="Next frame">▶</button>
+        <span id="texFrameInfo"></span>
+        <label class="small" style="display:flex;align-items:center;gap:4px;margin:0;color:var(--m)">Speed
+          <select id="texSpeed" style="width:auto;margin:0;padding:2px 4px;font-size:12px">
+            <option value="0.25">0.25×</option>
+            <option value="0.5">0.5×</option>
+            <option value="1" selected>1×</option>
+            <option value="2">2×</option>
+            <option value="4">4×</option>
+          </select>
+        </label>
+        <button id="texStrip" title="Show all frames stacked, as stored in the file">Show strip</button>
+      </div>
+      <div id="textureModalImgWrap"><canvas id="textureModalCanvas"></canvas><img id="textureModalImg" alt="" hidden></div>
+      <div id="textureModalPath" class="src"></div>
+      <div id="textureModalMeta">
+        <button id="textureModalCopyUrl">📋 Copy URL</button>
+        <button id="textureModalCopyPath">📋 Copy path</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="cachedModal" class="modal-overlay" hidden>
+  <div class="modal">
+    <div class="modal-header">
+      <b>Cached repositories</b>
+      <button id="cachedModalClose" style="padding:2px 10px;">✕</button>
+    </div>
+    <div class="modal-body" id="cachedModalBody">
+      <p class="note">Loading…</p>
+    </div>
+    <div class="modal-footer">
+      <button id="cachedExport" title="Download all cached repos as one JSON file">⬇ Export all</button>
+      <button id="cachedImportBtn" title="Import cached repos from a JSON file">⬆ Import</button>
+      <button id="cachedClearAll" class="del" style="margin-left:auto;">Clear all</button>
+      <button id="cachedDone" class="on">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+const raw = s => s.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'') || 'unnamed';
+
+/* ---------- logger ---------- */
+const LOGS = []; const MAX_LOGS = 800;
+function log(msg, cls = '') {
+  LOGS.push({ t: new Date().toLocaleTimeString(), msg: String(msg), cls });
+  if (LOGS.length > MAX_LOGS) LOGS.shift();
+  const body = document.getElementById('logBody');
+  if (body) {
+    const d = document.createElement('div');
+    d.className = 'logEntry ' + (cls || '');
+    d.innerHTML = `<span class="logTime">${LOGS[LOGS.length-1].t}</span>${esc(msg)}`;
+    body.appendChild(d); body.scrollTop = body.scrollHeight;
+  }
+  updateLogButton();
+}
+function updateLogButton() {
+  const btn = document.getElementById('logToggle');
+  if (!btn) return;
+  const cnt = document.getElementById('logCount');
+  if (cnt) cnt.textContent = String(LOGS.length);
+  btn.classList.toggle('err', LOGS.some(l => l.cls === 'err'));
+}
+function renderAllLogs() {
+  const body = document.getElementById('logBody');
+  if (!body) return;
+  body.innerHTML = '';
+  if (!LOGS.length) {
+    const d = document.createElement('div'); d.className = 'logEntry dim';
+    d.textContent = 'No logs yet.'; body.appendChild(d); return;
+  }
+  for (const e of LOGS) {
+    const d = document.createElement('div');
+    d.className = 'logEntry ' + (e.cls || '');
+    d.innerHTML = `<span class="logTime">${e.t}</span>${esc(e.msg)}`;
+    body.appendChild(d);
+  }
+  body.scrollTop = body.scrollHeight;
+}
+window.addEventListener('error', e =>
+  log(`Uncaught: ${e.message} @ ${e.filename || '?'}:${e.lineno || '?'}`, 'err'));
+window.addEventListener('unhandledrejection', e =>
+  log(`Unhandled rejection: ${e.reason && e.reason.message ? e.reason.message : e.reason}`, 'err'));
+
+/* ============================================================
+   SETTINGS
+   ============================================================ */
+const SETTINGS_KEY = 'gtnh-explorer-settings-v2';
+const SETTINGS_KEY_LEGACY = 'gtnh-explorer-settings-v1';
+const SETTINGS_DEFAULTS = {
+  appTheme: 'dark',
+  theme: 'dark', fontSize: 12,
+  fontFamily: "ui-monospace, 'Cascadia Code', 'Fira Code', Consolas, monospace",
+  folds: 'classes-methods', minFoldLines: 3,
+  collapseImports: true, lineNumbers: true, wordWrap: false,
+  highlight: true,
+  autoFold: false, autoFoldN: 30,
+};
+let settings = { ...SETTINGS_DEFAULTS };
+function loadSettings() {
+  try {
+    let raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) {
+      const legacy = localStorage.getItem(SETTINGS_KEY_LEGACY);
+      if (legacy) {
+        const parsed = JSON.parse(legacy);
+        parsed.autoFold = false;
+        if (parsed.appTheme === undefined) parsed.appTheme = 'dark';
+        Object.assign(settings, parsed);
+        saveSettings();
+        return;
+      }
+    }
+    if (raw) Object.assign(settings, JSON.parse(raw));
+  } catch {}
+}
+function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch {} }
+function applySettings() {
+  document.documentElement.setAttribute('data-app-theme', settings.appTheme);
+  document.documentElement.style.setProperty('--cv-font-size', settings.fontSize + 'px');
+  document.documentElement.style.setProperty('--cv-font-family', settings.fontFamily);
+  document.querySelectorAll('.code-viewer').forEach(el => {
+    el.dataset.theme = settings.theme;
+    el.classList.toggle('word-wrap', !!settings.wordWrap);
+  });
+  document.querySelectorAll('.code-viewer[data-src-path]').forEach(el => {
+    renderSourceInto(el, files[el.dataset.srcPath] || '', el.dataset.srcPath);
+  });
+  renderThemeSwatches();
+}
+function renderThemeSwatches() {
+  document.querySelectorAll('.theme-swatch').forEach(btn => {
+    btn.classList.toggle('on', btn.dataset.apptheme === settings.appTheme);
+  });
+}
+document.querySelectorAll('.theme-swatch').forEach(btn => {
+  btn.addEventListener('click', () => {
+    settings.appTheme = btn.dataset.apptheme;
+    saveSettings();
+    applySettings();
+  });
+});
+
+/* ============================================================
+   SIDEBAR SORT
+   ============================================================ */
+const SIDEBAR_SORT_KEY = 'gtnh-explorer-sidebar-sort-v1';
+let sidebarSort = 'az';
+function loadSidebarSort() {
+  try { const v = localStorage.getItem(SIDEBAR_SORT_KEY);
+    if (v === 'az' || v === 'za' || v === 'none') sidebarSort = v; } catch {}
+}
+function saveSidebarSort() { try { localStorage.setItem(SIDEBAR_SORT_KEY, sidebarSort); } catch {} }
+function labelOf(o) {
+  if (!o) return '?';
+  if (o.name) return o.name;
+  if (o.className) return o.className;
+  if (o.path) return o.path.split('/').pop();
+  return '?';
+}
+function sortBarHTML() {
+  return `<div class="sort-bar">
+    <span class="sort-label">Sort</span>
+    <button data-sortmode="az" class="${sidebarSort === 'az' ? 'on' : ''}" title="Alphabetical A → Z">A→Z</button>
+    <button data-sortmode="za" class="${sidebarSort === 'za' ? 'on' : ''}" title="Alphabetical Z → A">Z→A</button>
+    <button data-sortmode="none" class="${sidebarSort === 'none' ? 'on' : ''}" title="Original order">—</button>
+  </div>`;
+}
+function renderSidebarList(arr) {
+  const q = (catSearch[tab] || '').trim();
+  const indexed = arr.map((o, i) => ({ o, i }))
+    .filter(({ o }) => !q || matchQuery(entryHaystack(o), q));
+  if (q && !indexed.length) return '<p class="note">No matches.</p>';
+  if (sidebarSort !== 'none') {
+    const dir = sidebarSort === 'az' ? 1 : -1;
+    indexed.sort((a, b) => {
+      const cmp = labelOf(a.o).localeCompare(labelOf(b.o), undefined, { sensitivity: 'base', numeric: true });
+      return dir * cmp;
+    });
+  }
+  return indexed.map(({ o, i }) =>
+    `<button data-sel="${i}" class="${i === sel ? 'on' : ''}">${esc(labelOf(o))}</button>`
+  ).join('');
+}
+
+/* ============================================================
+   JAVA TOKENIZER
+   ============================================================ */
+const JAVA_KEYWORDS = new Set([
+  'abstract','assert','boolean','break','byte','case','catch','char','class','const',
+  'continue','default','do','double','else','enum','extends','final','finally','float',
+  'for','goto','if','implements','import','instanceof','int','interface','long','native',
+  'new','package','private','protected','public','return','short','static','strictfp',
+  'super','switch','synchronized','this','throw','throws','transient','try','void',
+  'volatile','while','true','false','null'
+]);
+const TOKEN_RE = new RegExp(
+  '(\\/\\/[^\\n]*|\\/\\*[\\s\\S]*?\\*\\/)' +
+  '|("(?:\\\\.|[^"\\\\\\n])*")' +
+  "|('(?:\\\\.|[^'\\\\\\n])*')" +
+  '|(@[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*)' +
+  '|\\b(0[xX][0-9a-fA-F]+[lL]?|\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?[fFdDlL]?)\\b' +
+  '|\\b([A-Za-z_$][A-Za-z0-9_$]*)\\b' +
+  '|([+\\-*\\/%=<>!&|^~?:.,;()\\{\\}\\[\\]@])'
+, 'g');
+
+function tokenizeJava(src) {
+  const tokens = []; let m, last = 0; TOKEN_RE.lastIndex = 0;
+  while ((m = TOKEN_RE.exec(src))) {
+    if (m.index > last) tokens.push({ type: 'plain', text: src.slice(last, m.index) });
+    let type = 'plain';
+    if (m[1]) type = 'comment'; else if (m[2]) type = 'string';
+    else if (m[3]) type = 'char'; else if (m[4]) type = 'annotation';
+    else if (m[5]) type = 'number';
+    else if (m[6]) {
+      const w = m[6];
+      if (JAVA_KEYWORDS.has(w)) type = 'keyword';
+      else if (/^[A-Z]/.test(w)) type = 'type';
+      else type = 'ident';
+    } else if (m[7]) type = 'op';
+    tokens.push({ type, text: m[0] });
+    last = m.index + m[0].length;
+  }
+  if (last < src.length) tokens.push({ type: 'plain', text: src.slice(last) });
+  for (let i = 0; i < tokens.length; i++) {
+    if (tokens[i].type !== 'ident') continue;
+    let j = i + 1;
+    while (j < tokens.length && tokens[j].type === 'plain' && !/\S/.test(tokens[j].text)) j++;
+    if (j < tokens.length && tokens[j].type === 'op' && tokens[j].text.startsWith('(')) tokens[i].type = 'function';
+  }
+  return tokens;
+}
+function distributeTokensToLines(tokens, lineCount) {
+  const lineTokens = Array.from({ length: lineCount }, () => []);
+  let lineIdx = 0;
+  for (const tok of tokens) {
+    const parts = tok.text.split('\n');
+    for (let p = 0; p < parts.length; p++) {
+      if (parts[p].length > 0) lineTokens[lineIdx].push({ type: tok.type, text: parts[p] });
+      if (p < parts.length - 1) lineIdx++;
+    }
+  }
+  return lineTokens;
+}
+
+/* ============================================================
+   FOLD ANALYSIS
+   ============================================================ */
+function computeDepthPerLine(lines) {
+  const depthBefore = [], depthAfter = [];
+  let depth = 0; let state = 'normal';
+  for (const line of lines) {
+    depthBefore.push(depth);
+    let i = 0;
+    while (i < line.length) {
+      const c = line[i];
+      if (state === 'blockComment') {
+        if (c === '*' && line[i+1] === '/') { state = 'normal'; i += 2; continue; } i++; continue;
+      }
+      if (state === 'string') {
+        if (c === '\\') { i += 2; continue; } if (c === '"') { state = 'normal'; i++; continue; } i++; continue;
+      }
+      if (state === 'char') {
+        if (c === '\\') { i += 2; continue; } if (c === "'") { state = 'normal'; i++; continue; } i++; continue;
+      }
+      if (state === 'lineComment') { i++; continue; }
+      if (c === '/' && line[i+1] === '/') { state = 'lineComment'; i += 2; continue; }
+      if (c === '/' && line[i+1] === '*') { state = 'blockComment'; i += 2; continue; }
+      if (c === '"') { state = 'string'; i++; continue; }
+      if (c === "'") { state = 'char'; i++; continue; }
+      if (c === '{') depth++; else if (c === '}') depth--;
+      i++;
+    }
+    if (state === 'lineComment') state = 'normal';
+    depthAfter.push(depth);
+  }
+  return { depthBefore, depthAfter };
+}
+function stripLineForCheck(line) {
+  return line.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
+             .replace(/"(?:\\.|[^"\\\n])*"/g, '""').replace(/'(?:\\.|[^'\\\n])*'/g, "''");
+}
+function isSignatureLine(line) {
+  const stripped = stripLineForCheck(line).trim();
+  if (!stripped.endsWith('{')) return false;
+  const body = stripped.slice(0, -1).trim();
+  if (!body) return false;
+  if (/->\s*$/.test(body)) return false;
+  if (/\b(?:class|interface|enum)\s+[A-Z]\w*/.test(body)) return true;
+  if (/^static$/.test(body)) return true;
+  const m = body.match(/\b(\w+)\s*\([^)]*\)\s*(?:throws\s+[\w.,\s<>\[\]]+)?$/);
+  if (m) {
+    const name = m[1];
+    if (!['if','for','while','switch','catch','synchronized','else','do','return','new'].includes(name)) return true;
+  }
+  return false;
+}
+function isAnyBlockStart(line) {
+  const stripped = stripLineForCheck(line).trim();
+  if (!stripped.endsWith('{')) return false;
+  if (/->\s*$/.test(stripped.slice(0, -1))) return false;
+  return true;
+}
+function findFoldRegions(lines, opts) {
+  if (opts.folds === 'off') return [];
+  const { depthAfter, depthBefore } = computeDepthPerLine(lines);
+  const regions = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const isSig = isSignatureLine(line);
+    const isAny = opts.folds === 'all' && isAnyBlockStart(line);
+    if (!isSig && !isAny) continue;
+    if (depthAfter[i] <= depthBefore[i]) continue;
+    const startDepth = depthAfter[i];
+    let endLine = -1;
+    for (let j = i + 1; j < lines.length; j++) {
+      if (depthAfter[j] < startDepth) { endLine = j; break; }
+    }
+    if (endLine === -1) endLine = lines.length - 1;
+    const length = endLine - i + 1;
+    if (length < opts.minFoldLines + 1) continue;
+    let kind = 'method';
+    if (/\b(?:class|interface|enum)\s+\w+/.test(line)) kind = 'class';
+    if (opts.folds === 'classes' && kind !== 'class') continue;
+    regions.push({ start: i, end: endLine, kind });
+  }
+  return regions;
+}
+function findImportRegion(lines) {
+  let first = -1, last = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const t = lines[i].trim();
+    if (/^import\s+(?:static\s+)?[\w.*]+\s*;$/.test(t)) {
+      if (first === -1) first = i; last = i;
+    } else if (first !== -1 && t !== '') break;
+  }
+  if (first === -1 || last - first < 1) return null;
+  return { start: first, end: last, kind: 'imports' };
+}
+function buildFoldTree(folds, totalLines) {
+  const sorted = [...folds].sort((a, b) => a.start - b.start || b.end - a.end);
+  const root = { start: -1, end: totalLines, children: [], kind: 'root' };
+  const stack = [root];
+  for (const f of sorted) {
+    while (stack.length > 1 && stack[stack.length - 1].end < f.start) stack.pop();
+    const parent = stack[stack.length - 1];
+    if (f.end > parent.end) continue;
+    const node = { ...f, children: [] };
+    parent.children.push(node);
+    stack.push(node);
+  }
+  return root;
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function renderSourceInto(el, src, path) {
+  el.dataset.srcPath = path;
+  const body = el.querySelector('.code-viewer-body');
+  if (!body) return;
+  if (!src) { body.innerHTML = '<div style="padding:10px;color:var(--m)">No source.</div>'; return; }
+  const lines = src.split('\n');
+  if (!settings.highlight) {
+    body.innerHTML = '<pre style="margin:0;padding:0 8px;font-family:inherit;font-size:inherit;white-space:pre;background:transparent;border:none">' + esc(src) + '</pre>';
+    return;
+  }
+  const tokens = tokenizeJava(src);
+  const lineTokens = distributeTokensToLines(tokens, lines.length);
+  const folds = findFoldRegions(lines, { folds: settings.folds, minFoldLines: settings.minFoldLines });
+  if (settings.collapseImports) {
+    const imp = findImportRegion(lines);
+    if (imp) folds.push(imp);
+  }
+  const tree = buildFoldTree(folds, lines.length);
+  body.innerHTML = renderTree(tree, lines, lineTokens, true);
+}
+function renderTree(node, lines, lineTokens, isRoot) {
+  let html = '';
+  const childrenByStart = new Map();
+  for (const c of node.children) childrenByStart.set(c.start, c);
+  const startLine = isRoot ? 0 : node.start + 1;
+  const endLine = isRoot ? lines.length - 1 : node.end;
+  for (let i = startLine; i <= endLine; i++) {
+    if (childrenByStart.has(i)) {
+      const child = childrenByStart.get(i);
+      html += renderFold(child, lines, lineTokens);
+      i = child.end;
+    } else {
+      html += renderLine(i, lineTokens[i]);
+    }
+  }
+  return html;
+}
+function renderFold(node, lines, lineTokens) {
+  const isImport = node.kind === 'imports';
+  const length = node.end - node.start + 1;
+  let initiallyFolded = false;
+  if (isImport) initiallyFolded = true;
+  else if (settings.autoFold && length > settings.autoFoldN) initiallyFolded = true;
+
+  let body = '';
+  const childrenByStart = new Map();
+  for (const c of node.children) childrenByStart.set(c.start, c);
+  for (let i = node.start + 1; i <= node.end; i++) {
+    if (childrenByStart.has(i)) {
+      const child = childrenByStart.get(i);
+      body += renderFold(child, lines, lineTokens);
+      i = child.end;
+    } else {
+      body += renderLine(i, lineTokens[i]);
+    }
+  }
+  const headContent = isImport
+    ? renderLine(node.start, [{ type: 'comment', text: `// imports (${node.end - node.start + 1} lines)` }])
+    : renderLine(node.start, lineTokens[node.start]);
+  const cls = 'code-region' + (isImport ? ' imports' : '') + (initiallyFolded ? ' folded' : '');
+  return `<div class="${cls}" data-lines-hidden="${node.end - node.start}">
+    <div class="code-region-head">
+      <button class="code-fold-toggle" aria-label="Toggle fold"></button>
+      <div class="code-content">${headContent.replace(/^<div class="code-line" data-ln="\d+">/, '').replace(/<\/div>$/, '')}</div>
+    </div>
+    <div class="code-region-body">${body}</div>
+  </div>`;
+}
+const SYM_TYPES = new Set(['type', 'ident', 'function']);
+function renderLine(i, tokens) {
+  const ln = settings.lineNumbers ? `<span class="code-ln">${i + 1}</span>` : '';
+  const content = tokens.map(t => t.type === 'plain' ? esc(t.text)
+    : `<span class="tok-${t.type}${SYM_TYPES.has(t.type) ? ' sym' : ''}">${esc(t.text)}</span>`).join('');
+  return `<div class="code-line" data-ln="${i + 1}">${ln}<span class="code-content" data-ln="${i + 1}">${content}</span></div>`;
+}
+
+function makeViewerHTML(path) {
+  return `<div class="code-viewer" data-theme="${settings.theme}" data-src-path="${esc(path)}" ${settings.wordWrap ? 'class="code-viewer word-wrap"' : ''}>
+    <div class="code-viewer-toolbar">
+      <span class="path" title="${esc(path)}">${esc(path)}</span>
+      <span style="margin-left:auto; display:flex; gap:4px;">
+        <button data-act="copySrc">📋 Copy</button>
+        <button data-act="refreshSrc">🔄</button>
+        <button data-act="foldAll">⊟ Fold</button>
+        <button data-act="unfoldAll">⊞ Unfold</button>
+      </span>
+    </div>
+    <div class="code-viewer-body" title="Click a class, method or variable to jump to its definition"><div style="padding:10px;color:var(--m)">Loading…</div></div>
+  </div>`;
+}
+async function loadSourceIntoViewer(el) {
+  const path = el.dataset.srcPath;
+  if (!path) return;
+  const body = el.querySelector('.code-viewer-body');
+  if (body && !files[path]) body.innerHTML = '<div style="padding:10px;color:var(--m)">Loading…</div>';
+  const txt = await ensureSourceLoaded(path);
+  renderSourceInto(el, txt || '', path);
+}
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let S = emptyModel();
+let tab = 'overview';
+let sel = 0;
+let files = {};
+let fileList = [];
+let warnings = [];
+let repoMeta = { owner:'', repo:'', branch:'master', name:'' };
+let fqnIndex = Object.create(null);
+let basenameIndex = Object.create(null);
+let relationIndex = null;
+
+let textureIndex = null;
+let textureCache = new Map();
+let textureSearch = '';
+let textureFolderFilter = 'all';
+
+let texZoomMode = 'fit';
+let texNaturalW = 16, texNaturalH = 16;
+
+function emptyModel() {
+  return {
+    mod: { name:'', id:'', pkg:'', ver:'', author:'', desc:'', deps:[] },
+    blocks: [], tes: [], items: [], ents: [],
+    mixins: [], ieeps: [], coremods: [], raw: []
+  };
+}
+
+const TABS = {
+  overview:'Overview', blocks:'Blocks', tes:'Tile Entities', items:'Items',
+  ents:'Entities', textures:'Textures',
+  mixins:'Mixins / Core', ieeps:'IEEP',
+  raw:'Raw / Unparsed', export:'Export'
+};
+
+/* ============================================================
+   INDEXEDDB CACHE
+   ============================================================ */
+const DB_NAME = 'gtnh-explorer-cache';
+const DB_VERSION = 1;
+const DB_STORE = 'repos';
+let dbSupported = true;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    if (typeof indexedDB === 'undefined') { dbSupported = false; reject(new Error('IndexedDB not supported')); return; }
+    let req;
+    try { req = indexedDB.open(DB_NAME, DB_VERSION); }
+    catch (e) { dbSupported = false; reject(e); return; }
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(DB_STORE)) {
+        db.createObjectStore(DB_STORE, { keyPath: 'key' });
+      }
+    };
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror = e => { dbSupported = false; reject(e.target.error); };
+  });
+}
+async function dbPut(record) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DB_STORE, 'readwrite');
+    tx.objectStore(DB_STORE).put(record);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+async function dbGet(key) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DB_STORE, 'readonly');
+    const req = tx.objectStore(DB_STORE).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function dbDelete(key) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DB_STORE, 'readwrite');
+    tx.objectStore(DB_STORE).delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+async function dbList() {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DB_STORE, 'readonly');
+    const req = tx.objectStore(DB_STORE).getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function dbClear() {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DB_STORE, 'readwrite');
+    tx.objectStore(DB_STORE).clear();
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+const cacheKey = () => `${repoMeta.owner}/${repoMeta.repo}@${repoMeta.branch}`;
+const fmtBytes = n => n < 1024 ? `${n} B` : n < 1048576 ? `${(n/1024).toFixed(1)} KB` : `${(n/1048576).toFixed(1)} MB`;
+
+async function saveToCache() {
+  if (!repoMeta.owner || !repoMeta.repo) return;
+  const key = cacheKey();
+  const counts = {
+    blocks: S.blocks.length, tes: S.tes.length, items: S.items.length, ents: S.ents.length,
+    mixins: S.mixins.length, ieeps: S.ieeps.length, coremods: S.coremods.length,
+    raw: S.raw.length,
+    textures: textureIndex ? textureIndex.all.length : 0,
+    javaFiles: fileList.filter(p => p.endsWith('.java')).length,
+  };
+  const record = {
+    key,
+    meta: {
+      owner: repoMeta.owner, repo: repoMeta.repo, branch: repoMeta.branch, name: repoMeta.name,
+      savedAt: Date.now(),
+      fileCount: fileList.length,
+      counts,
+    },
+    tree: fileList,
+    files: { ...files },
+    model: S,
+    warnings: [...warnings],
+  };
+  try {
+    const bytes = new Blob([JSON.stringify(record)]).size;
+    record.meta.bytes = bytes;
+    await dbPut(record);
+    log(`Cached ${key} (${fmtBytes(bytes)}, ${Object.keys(files).length} source files)`, 'ok');
+    await updateCachedCount();
+  } catch (e) {
+    log(`Cache save failed: ${e.message}`, 'warn');
+  }
+}
+
+async function loadFromCache(key) {
+  try {
+    const rec = await dbGet(key);
+    if (!rec) { log(`Not in cache: ${key}`, 'warn'); return false; }
+    repoMeta = { owner: rec.meta.owner, repo: rec.meta.repo, branch: rec.meta.branch, name: rec.meta.name };
+    fileList = rec.tree;
+    files = rec.files;
+    S = rec.model;
+    warnings = rec.warnings || [];
+    fqnIndex = buildFqnIndex();
+    basenameIndex = buildBasenameIndex();
+    relationIndex = null;
+    textureIndex = buildTextureIndex();
+    textureCache.clear();
+    tab = 'overview';
+    sel = 0;
+    const age = Math.round((Date.now() - rec.meta.savedAt) / 1000);
+    const ageStr = age < 60 ? `${age}s` : age < 3600 ? `${Math.round(age/60)}m` : age < 86400 ? `${Math.round(age/3600)}h` : `${Math.round(age/86400)}d`;
+    log(`Loaded ${key} from cache (saved ${ageStr} ago, ${rec.meta.fileCount} files)`, 'ok');
+    setStatus(`Loaded from cache: ${rec.meta.name || key}`, 'ok');
+    draw();
+    closeCachedModal();
+    return true;
+  } catch (e) {
+    log(`Cache load failed: ${e.message}`, 'err');
+    return false;
+  }
+}
+
+async function updateCachedCount() {
+  try {
+    const records = await dbList();
+    const el = document.getElementById('cachedCount');
+    if (el) el.textContent = String(records.length);
+  } catch {}
+}
+
+function closeCachedModal() {
+  const modal = document.getElementById('cachedModal');
+  if (modal) modal.hidden = true;
+}
+
+async function openCachedModal() {
+  const modal = document.getElementById('cachedModal');
+  const body = document.getElementById('cachedModalBody');
+  modal.hidden = false;
+  body.innerHTML = '<p class="note">Loading…</p>';
+  try {
+    const records = await dbList();
+    records.sort((a, b) => b.meta.savedAt - a.meta.savedAt);
+    if (!records.length) {
+      body.innerHTML = `<p class="cached-empty">No cached repositories yet.<br><br>Explore a repo to cache it automatically.</p>`;
+      return;
+    }
+    const totalBytes = records.reduce((n, r) => n + (r.meta.bytes || 0), 0);
+    body.innerHTML = `
+      <p class="cached-total">${records.length} cached repo${records.length === 1 ? '' : 's'} · ${fmtBytes(totalBytes)} total · stored locally in IndexedDB</p>
+      <div class="cached-list">
+        ${records.map(r => {
+          const age = Date.now() - r.meta.savedAt;
+          const ageStr = age < 60000 ? `${Math.round(age/1000)}s` :
+            age < 3600000 ? `${Math.round(age/60000)}m` :
+            age < 86400000 ? `${Math.round(age/3600000)}h` :
+            `${Math.round(age/86400000)}d`;
+          const c = r.meta.counts || {};
+          return `<div class="cached-row">
+            <div class="cached-info">
+              <div class="cached-name" title="${esc(r.key)}">${esc(r.meta.name || r.meta.repo)} <span class="badge">${esc(r.key)}</span></div>
+              <div class="cached-meta">
+                saved ${ageStr} ago · ${fmtBytes(r.meta.bytes || 0)} · ${r.meta.fileCount} files<br>
+                ${c.blocks||0} blocks · ${c.tes||0} TEs · ${c.items||0} items · ${c.ents||0} ents · ${c.mixins||0} mixins · ${c.raw||0} raw · ${c.textures||0} textures
+              </div>
+            </div>
+            <div class="cached-actions">
+              <button class="on" data-cachedload="${esc(r.key)}" title="Load instantly, no network">Load</button>
+              <button data-cachedrefresh="${esc(r.key)}" title="Re-download from GitHub">🔄</button>
+              <button class="del" data-cacheddelete="${esc(r.key)}" title="Remove from cache">✕</button>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+  } catch (e) {
+    body.innerHTML = `<p class="err">Failed to read cache: ${esc(e.message)}</p>`;
+  }
+}
+
+async function exportCache() {
+  try {
+    const records = await dbList();
+    if (!records.length) { log('Cache empty, nothing to export.', 'warn'); return; }
+    const data = { tool: 'gtnh-mod-explorer-cache', v: 1, exported: Date.now(), repos: {} };
+    for (const r of records) data.repos[r.key] = r;
+    const json = JSON.stringify(data);
+    const blob = new Blob([json], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `gtnh-explorer-cache-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    log(`Exported ${records.length} cached repos (${fmtBytes(blob.size)})`, 'ok');
+  } catch (e) {
+    log('Export failed: ' + e.message, 'err');
+  }
+}
+
+async function importCache(file) {
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if (!data || !data.repos) throw new Error('Not a GTNH Explorer cache file');
+    const entries = Object.entries(data.repos);
+    let ok = 0, fail = 0;
+    for (const [, rec] of entries) {
+      try {
+        if (!rec.key || !rec.meta || !rec.tree) throw new Error('Bad record');
+        await dbPut(rec);
+        ok++;
+      } catch (e) { fail++; }
+    }
+    log(`Imported ${ok}/${entries.length} cached repos${fail ? ` (${fail} failed)` : ''}`, 'ok');
+    await updateCachedCount();
+    openCachedModal();
+  } catch (e) {
+    log('Import failed: ' + e.message, 'err');
+  }
+}
+
+/* ============================================================
+   INDEX BUILDERS
+   ============================================================ */
+function buildFqnIndex() {
+  const index = Object.create(null);
+  if (!Array.isArray(fileList)) return index;
+  for (const p of fileList) {
+    if (typeof p !== 'string') continue;
+    if (!p.endsWith('.java')) continue;
+    const rel = p.replace(/^src\/main\/java\//, '');
+    if (rel === p) continue;
+    const parts = rel.split('/');
+    if (!parts.length) continue;
+    const cls = (parts.pop() || '').replace(/\.java$/, '');
+    if (!cls) continue;
+    const pkg = parts.join('.');
+    if (pkg) index[pkg + '.' + cls] = p;
+  }
+  return index;
+}
+function buildBasenameIndex() {
+  const index = Object.create(null);
+  if (!Array.isArray(fileList)) return index;
+  for (const p of fileList) {
+    if (typeof p !== 'string') continue;
+    if (!p.endsWith('.java')) continue;
+    const slash = p.lastIndexOf('/');
+    const name = (slash >= 0 ? p.slice(slash + 1) : p).replace(/\.java$/, '');
+    if (!name) continue;
+    if (!index[name]) index[name] = [];
+    index[name].push(p);
+  }
+  return index;
+}
+function extractImports(txt) {
+  if (typeof txt !== 'string') return [];
+  const out = [];
+  for (const m of txt.matchAll(/^\s*import\s+(?:static\s+)?([\w.]+(?:\.\*)?)\s*;/gm)) {
+    out.push(m[1]);
+  }
+  return out;
+}
+
+/* ============================================================
+   TEXTURE INDEX + MCMETA
+   ============================================================ */
+function buildTextureIndex() {
+  textureCache.clear();
+  const idx = { all: [], byFolder: Object.create(null), byBasename: Object.create(null),
+                mcmetaSet: new Set() };
+  if (!Array.isArray(fileList)) return idx;
+  // Collect all .mcmeta paths in the repo so we can check existence without a fetch.
+  for (const p of fileList) {
+    if (typeof p === 'string' && p.endsWith('.mcmeta')) idx.mcmetaSet.add(p);
+  }
+  for (const p of fileList) {
+    if (typeof p !== 'string') continue;
+    if (!/\.(png|gif)$/i.test(p)) continue;
+    const texIdx = p.toLowerCase().indexOf('/textures/');
+    if (texIdx === -1) continue;
+    const afterTextures = p.slice(texIdx + '/textures/'.length);
+    const parts = afterTextures.split('/');
+    if (parts.length < 2) continue;
+    const topFolder = parts[0].toLowerCase();
+    const filename = parts[parts.length - 1];
+    const dot = filename.lastIndexOf('.');
+    const basename = dot >= 0 ? filename.slice(0, dot) : filename;
+    const ext = dot >= 0 ? filename.slice(dot + 1).toLowerCase() : '';
+    if (!basename) continue;
+    const subpath = parts.slice(1).join('/');
+    const item = { path: p, folder: topFolder, subpath, basename, ext };
+    idx.all.push(item);
+    if (!idx.byFolder[topFolder]) idx.byFolder[topFolder] = [];
+    idx.byFolder[topFolder].push(item);
+    const lowerBase = basename.toLowerCase();
+    if (!idx.byBasename[lowerBase]) idx.byBasename[lowerBase] = [];
+    idx.byBasename[lowerBase].push(item);
+  }
+  return idx;
+}
+
+/* frametime is in ticks; 1 tick = 50ms (Minecraft runs at 20 TPS). */
+function frameDurationMs(frametime, speed = 1) {
+  return Math.max(10, (frametime * 50) / speed);
+}
+
+function parseMcmeta(txt) {
+  try {
+    // 1.7.10 mcmeta files are JSON but sometimes have // comments or trailing commas.
+    let clean = String(txt).replace(/\/\/[^\n]*/g, '').replace(/,\s*([}\]])/g, '$1');
+    const j = JSON.parse(clean);
+    const anim = j && j.animation;
+    if (!anim || typeof anim !== 'object') return null;
+    const frametime = (typeof anim.frametime === 'number' && anim.frametime > 0) ? anim.frametime : 1;
+    const frames = Array.isArray(anim.frames)
+      ? anim.frames.filter(n => typeof n === 'number' && isFinite(n) && n >= 0)
+      : null;
+    return { frametime, frames, interpolate: !!anim.interpolate };
+  } catch { return null; }
+}
+
+/**
+ * Return the parsed .mcmeta for a texture, or null if not available.
+ *
+ * mcmeta files are prefetched during explore() and stored in `files`
+ * (which is cached alongside the rest of the mod). This function
+ * NEVER fetches from GitHub — if the mcmeta is missing (e.g. an old
+ * cache from before the prefetch existed), it returns null and the
+ * caller falls back to 1 tick/frame, matching the spec.
+ */
+async function getMcmeta(texPath) {
+  if (!textureIndex || !textureIndex.mcmetaSet) return null;
+  const mcPath = texPath + '.mcmeta';
+  if (!textureIndex.mcmetaSet.has(mcPath)) return null;
+  return files[mcPath] ? parseMcmeta(files[mcPath]) : null;
+}
+
+/**
+ * Build the playback order (array of physical frame indices) from an mcmeta
+ * `frames` list and the physical sheet size.
+ * - `frames` from mcmeta, filtered to valid indices, if non-empty.
+ * - else default `[0, 1, ..., sheetFrames-1]`.
+ */
+function buildFrameOrder(sheetFrames, mcmeta) {
+  if (mcmeta && mcmeta.frames && mcmeta.frames.length) {
+    const filtered = mcmeta.frames.filter(n => n < sheetFrames);
+    if (filtered.length) return filtered;
+  }
+  return Array.from({ length: sheetFrames }, (_, i) => i);
+}
+
+async function withTimeout(promise, ms, fallback) {
+  return Promise.race([
+    promise.catch(() => fallback),
+    new Promise(r => setTimeout(() => r(fallback), ms)),
+  ]);
+}
+
+function rawUrl(path) {
+  return `https://raw.githubusercontent.com/${repoMeta.owner}/${repoMeta.repo}/${repoMeta.branch}/` +
+    path.split('/').map(encodeURIComponent).join('/');
+}
+function textureCandidates(entry) {
+  const names = new Set();
+  const addName = (s) => {
+    if (!s || s.length < 2) return;
+    const str = String(s);
+    names.add(str);
+    const snake = str.replace(/([a-z0-9])([A-Z])/g, '$1_$2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1_$2').toLowerCase();
+    names.add(snake);
+  };
+  if (entry.registryName) addName(String(entry.registryName));
+  const cls = entry.className || '';
+  const core = cls.replace(/^(?:TileEntity|Tile|Block|Item|Entity|MTE|MultiBlock|TE(?=[A-Z])|GT_Meta(?:TileEntity|Block|Item|Entity)?|Meta(?:TileEntity|Block|Item|Entity)?)/, '').replace(/^_+/, '');
+  if (core && core !== cls) addName(core);
+  if (entry.name) addName(entry.name);
+  return [...names].filter(n => n.replace(/[^a-z0-9]/gi, '').length >= 2);
+}
+function stripAlnum(s) { return String(s || '').replace(/[^a-z0-9]/gi, '').toLowerCase(); }
+function isTextureMatch(base, candidate) {
+  if (!base || !candidate) return false;
+  if (base.length < 2 || candidate.length < 2) return false;
+  const b = base.toLowerCase();
+  const c = candidate.toLowerCase();
+  if (b === c) return true;
+  if (b.startsWith(c)) {
+    const next = base.charAt(candidate.length);
+    if (next === '_' || next === '-' || next === '.' || next === '/' || next === ' ') return true;
+    if (/[0-9]/.test(next)) return true;
+    if (next === next.toUpperCase()) return true;
+  }
+  const bs = stripAlnum(base);
+  const cs = stripAlnum(candidate);
+  if (cs.length >= 3 && bs === cs) return true;
+  return false;
+}
+function getEntryTextures(entry, kind) {
+  if (!entry || !entry.sourcePath || !textureIndex) return [];
+  if (textureCache.has(entry.sourcePath)) return textureCache.get(entry.sourcePath);
+  let folders;
+  if (kind === 'blocks' || kind === 'tes') folders = ['blocks', 'block'];
+  else if (kind === 'items') folders = ['items', 'item'];
+  else if (kind === 'ents') folders = ['entity', 'entities', 'mob', 'mobs', 'entities'];
+  else folders = ['blocks', 'block', 'items', 'item', 'entity', 'entities'];
+  const names = textureCandidates(entry);
+  if (!names.length) { textureCache.set(entry.sourcePath, []); return []; }
+  const nameLower = new Set(names.map(n => n.toLowerCase()));
+  const results = new Map();
+  for (const folder of folders) {
+    const list = textureIndex.byFolder[folder];
+    if (!list) continue;
+    for (const item of list) {
+      for (const name of names) {
+        if (isTextureMatch(item.basename, name)) {
+          results.set(item.path, item);
+          break;
+        }
+      }
+    }
+  }
+  const arr = [...results.values()];
+  arr.sort((a, b) => {
+    const aExact = nameLower.has(a.basename.toLowerCase());
+    const bExact = nameLower.has(b.basename.toLowerCase());
+    if (aExact !== bExact) return aExact ? -1 : 1;
+    return a.basename.localeCompare(b.basename);
+  });
+  textureCache.set(entry.sourcePath, arr);
+  return arr;
+}
+function renderTexturesSection(entry, kind) {
+  if (!textureIndex) {
+    return `<h3>Textures</h3><p class="note">Explore a repo first to load textures.</p>`;
+  }
+  const textures = getEntryTextures(entry, kind);
+  const names = textureCandidates(entry);
+  const nameLower = new Set(names.map(n => n.toLowerCase()));
+  const exactMatch = (basename) => nameLower.has(basename.toLowerCase());
+
+  let grid = '';
+  if (textures.length) {
+    grid = `<div class="texture-grid">
+      ${textures.map(t => `
+        <div class="texture-tile" data-texpath="${esc(t.path)}" title="${esc(t.path)}">
+          <div class="texture-thumb">
+            <img src="${rawUrl(t.path)}" data-repo-path="${esc(t.path)}" loading="lazy" alt="${esc(t.basename)}"
+                 onerror="this.classList.add('broken')">
+          </div>
+          <div class="texture-name ${exactMatch(t.basename) ? 'exact' : ''}">${esc(t.basename)}.${esc(t.ext)}</div>
+        </div>
+      `).join('')}
+    </div>
+    <p class="note">Click any texture to enlarge. <b style="color:var(--ok)">Green</b> names are exact matches; others are prefix/alnum matches.</p>`;
+  } else {
+    const relevantFolders = kind === 'items' ? ['items', 'item'] :
+      (kind === 'ents' ? ['entity', 'entities', 'mob', 'mobs'] : ['blocks', 'block']);
+    const folderInfo = relevantFolders.map(f => {
+      const list = textureIndex.byFolder[f];
+      return list ? `${f} (${list.length})` : null;
+    }).filter(Boolean).join(', ');
+    const triedNames = names.length ? names.map(n => `<code>${esc(n)}</code>`).join(', ') : '<i>none</i>';
+    const allFolders = Object.keys(textureIndex.byFolder).map(f =>
+      `<code>${esc(f)}</code> (${textureIndex.byFolder[f].length})`
+    ).join(', ');
+    grid = `<p class="note">
+      No matching textures. Tried names: ${triedNames}.<br>
+      Looked in: ${folderInfo || '<i>no matching folders</i>'}.<br>
+      Folders in repo: ${allFolders || '<i>none</i>'}.<br>
+      <a href="#" data-act="browseTextures" style="color:var(--a)">Browse all ${textureIndex.all.length} textures →</a>
+    </p>`;
+  }
+
+  return `<h3>Textures (${textures.length})
+    <button class="small" data-act="browseTextures" style="float:right">Browse all →</button>
+  </h3>
+  ${grid}`;
+}
+
+/* ============================================================
+   GITHUB
+   ============================================================ */
+async function explore() {
+  const url = $('#repoUrl').value.trim();
+  if (!url) { log('Explore: empty URL', 'warn'); setStatus('Paste a GitHub URL first', 'warn'); return; }
+  const parsed = parseRepoUrl(url);
+  if (!parsed) { setStatus('Invalid GitHub URL', 'err'); log('Invalid GitHub URL: ' + url, 'err'); return; }
+  log(`Explore: ${parsed.owner}/${parsed.repo} (branch ${parsed.branch})`);
+  repoMeta = parsed;
+  setStatus('Fetching repository tree…');
+  warnings = []; files = {}; fileList = []; S = emptyModel();
+  fqnIndex = Object.create(null); basenameIndex = Object.create(null); relationIndex = null;
+  textureIndex = null; textureCache.clear();
+
+  try {
+    const tree = await fetchTree(parsed.owner, parsed.repo, parsed.branch);
+    if (!tree) return;
+    fileList = tree.filter(f => f.type === 'blob' && typeof f.path === 'string').map(f => f.path);
+    log(`Tree loaded: ${fileList.length} files on branch ${parsed.branch}`, 'ok');
+    textureIndex = buildTextureIndex();
+    log(`Texture index: ${textureIndex.all.length} files across ${Object.keys(textureIndex.byFolder).length} folder(s)`, textureIndex.all.length ? 'ok' : 'warn');
+    log(`  ${textureIndex.mcmetaSet.size} .mcmeta file(s) available for animation timing`, 'dim');
+    for (const [folder, list] of Object.entries(textureIndex.byFolder)) {
+      log(`  · ${folder}: ${list.length} textures`, 'dim');
+    }
+
+    // Prefetch all .mcmeta files so animation timing comes from the cache
+    // and never triggers a GitHub request when a texture is opened.
+    if (textureIndex.mcmetaSet.size > 0) {
+      const mcList = [...textureIndex.mcmetaSet];
+      log(`Prefetching ${mcList.length} .mcmeta file(s)…`);
+      const mcTxt = await fetchMany(parsed.owner, parsed.repo, parsed.branch, mcList, 12);
+      Object.assign(files, mcTxt);
+      log(`  Fetched ${Object.keys(mcTxt).length}/${mcList.length} .mcmeta file(s)`, 'ok');
+    }
+
+    setStatus(`Found ${fileList.length} files. Scanning…`);
+
+    await scanRepository(parsed.owner, parsed.repo, parsed.branch);
+
+    log(
+      `Model: ${S.blocks.length} blocks, ${S.tes.length} TEs, ${S.items.length} items, ` +
+      `${S.ents.length} entities, ${S.mixins.length} mixins, ${S.ieeps.length} IEEP, ${S.raw.length} raw`,
+      'ok'
+    );
+    warnings.forEach(w => log('Warning: ' + w, 'warn'));
+    setStatus('Model reconstructed.', 'ok');
+    draw();
+    saveToCache().catch(e => log('Cache save error: ' + e.message, 'warn'));
+  } catch (e) {
+    const msg = (e && e.message) ? e.message : (e === undefined ? 'undefined' : (e === null ? 'null' : String(e)));
+    const stk = (e && e.stack) ? e.stack : '';
+    log(`Explore error: ${msg}${stk ? '\n' + stk : ''}`, 'err');
+    setStatus('Error: ' + msg, 'err');
+  }
+}
+function parseRepoUrl(u) {
+  try {
+    const url = new URL(u);
+    if (!url.hostname.includes('github.com')) return null;
+    const parts = url.pathname.split('/').filter(Boolean);
+    if (parts.length < 2) return null;
+    let branch = 'master';
+    if (parts[2] === 'tree' && parts[3]) branch = parts[3];
+    return { owner: parts[0], repo: parts[1].replace(/\.git$/, ''), branch, name: parts[1] };
+  } catch { return null; }
+}
+async function fetchTree(owner, repo, branch) {
+  const branches = [branch, 'master', 'main'].filter((v, i, a) => a.indexOf(v) === i);
+  for (const b of branches) {
+    const api = `https://api.github.com/repos/${owner}/${repo}/git/trees/${b}?recursive=1`;
+    log(`GET ${api}`);
+    try {
+      const r = await fetch(api, { headers: { Accept: 'application/vnd.github+json' } });
+      log(`  → ${r.status}`, r.ok ? '' : 'warn');
+      if (r.status === 403) { log('GitHub rate limit (403).', 'warn'); setStatus('GitHub rate limit reached.', 'err'); return null; }
+      if (r.status === 404) continue;
+      if (!r.ok) continue;
+      const j = await r.json();
+      if (j.tree) { repoMeta.branch = b; log(`Using branch "${b}" — ${j.tree.length} entries`, 'ok'); return j.tree; }
+    } catch (e) { log(`Fetch error on "${b}": ${e.message}`, 'err'); }
+  }
+  setStatus('Could not fetch tree.', 'err');
+  return null;
+}
+async function fetchFile(owner, repo, branch, path) {
+  const api = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
+  try {
+    const r = await fetch(api);
+    if (!r.ok) { log(`Raw fetch ${r.status}: ${path}`, 'warn'); return null; }
+    return await r.text();
+  } catch (e) { log(`Raw fetch error: ${path} — ${e.message}`, 'err'); return null; }
+}
+async function fetchMany(owner, repo, branch, paths, concurrency = 8) {
+  const results = {}; let i = 0;
+  async function worker() {
+    while (i < paths.length) {
+      const p = paths[i++];
+      const txt = await fetchFile(owner, repo, branch, p);
+      if (txt !== null) results[p] = txt;
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, paths.length) }, worker));
+  return results;
+}
+async function ensureSourceLoaded(path) {
+  if (!path) return null;
+  if (files[path]) return files[path];
+  const txt = await fetchFile(repoMeta.owner, repoMeta.repo, repoMeta.branch, path);
+  if (txt !== null) files[path] = txt;
+  return txt;
+}
+
+/* ============================================================
+   SCANNER
+   ============================================================ */
+async function scanRepository(owner, repo, branch) {
+  const javaFiles = Array.isArray(fileList) ? fileList.filter(p => typeof p === 'string' && p.endsWith('.java')) : [];
+  log(`Scan: ${javaFiles.length} Java files total`);
+
+  log('Scan: building indexes…');
+  try { fqnIndex = buildFqnIndex(); }
+  catch (e) { log('FQN index build error: ' + e.message, 'err'); fqnIndex = Object.create(null); }
+  try { basenameIndex = buildBasenameIndex(); }
+  catch (e) { log('Basename index build error: ' + e.message, 'err'); basenameIndex = Object.create(null); }
+  log(`  FQN index: ${Object.keys(fqnIndex).length} entries, basename index: ${Object.keys(basenameIndex).length} entries`);
+
+  log('Scan: fetching metadata…');
+  const metaPaths = fileList.filter(p =>
+    p.endsWith('mcmod.info') ||
+    (p.endsWith('gradle.properties') && !p.includes('/gradle/')) ||
+    (p.endsWith('dependencies.gradle') && !p.includes('/gradle/'))
+  );
+  const metaTxt = await fetchMany(owner, repo, branch, metaPaths);
+  Object.assign(files, metaTxt);
+  const metaOrdered = Object.entries(metaTxt).sort(([a], [b]) => {
+    const aGradle = a.endsWith('gradle.properties') ? -1 : 0;
+    const bGradle = b.endsWith('gradle.properties') ? -1 : 0;
+    return aGradle - bGradle;
+  });
+  for (const [p, txt] of metaOrdered) {
+    if (p.endsWith('gradle.properties')) parseGradleProperties(txt);
+    else if (p.endsWith('mcmod.info')) parseMcmodInfo(txt);
+    else if (p.endsWith('dependencies.gradle')) parseDependencies(txt);
+  }
+  log(`  mod id="${S.mod.id}" name="${S.mod.name}" pkg="${S.mod.pkg}"`, S.mod.id ? 'ok' : 'warn');
+
+  log('Scan: locating @Mod entry point…');
+  const modCandidates = pickModCandidates(javaFiles);
+  log(`  ${modCandidates.length} candidate(s)`);
+  const modTxt = await fetchMany(owner, repo, branch, modCandidates, 6);
+  Object.assign(files, modTxt);
+  let modClassPath = null;
+  for (const [p, txt] of Object.entries(modTxt)) {
+    const stripped = stripComments(txt);
+    const m = stripped.match(/@Mod\s*\(([\s\S]*?)\)/);
+    if (m) {
+      log(`  @Mod found in ${p}`, 'ok');
+      parseModAnnotation(m[1], stripped, p);
+      modClassPath = p; break;
+    }
+  }
+  if (!modClassPath) {
+    warnings.push('No @Mod annotation found in candidates.');
+    log('  No @Mod annotation found in candidates.', 'warn');
+  }
+
+  log('Scan: classifying Block / Item / Tile / Entity…');
+  const classFiles = javaFiles.filter(p => isCandidateFile(p));
+  log(`  ${classFiles.length} candidate class files`);
+
+  const budget = 2500;
+  const toFetch = classFiles.filter(p => !files[p]).slice(0, budget);
+  if (toFetch.length) {
+    log(`  Fetching ${toFetch.length} class files (concurrency 8)…`);
+    const clsTxt = await fetchMany(owner, repo, branch, toFetch, 8);
+    Object.assign(files, clsTxt);
+    log(`  Fetched ${Object.keys(clsTxt).length}/${toFetch.length}`, 'ok');
+  }
+  if (classFiles.length > budget + modCandidates.length) {
+    warnings.push(`Fetch budget (${budget}) reached — some class files were not scanned.`);
+  }
+
+  const classified = { te:0, block:0, item:0, entity:0 };
+  const skipped = [];
+  for (const p of classFiles) {
+    if (!files[p]) continue;
+    const r = classifyClass(p, files[p]);
+    if (r && r.kind) classified[r.kind]++;
+    else if (r && r.skip) skipped.push({ path: p, reason: r.skip });
+    else skipped.push({ path: p, reason: 'no class declaration / no type match' });
+  }
+  log(`  Classified: ${classified.block} blocks, ${classified.te} TEs, ${classified.item} items, ${classified.entity} entities`, 'ok');
+  if (skipped.length) {
+    const byReason = {};
+    for (const s of skipped) {
+      const key = s.reason.replace(/\s*\(extends [\w.]+\)/, '').trim();
+      if (!byReason[key]) byReason[key] = [];
+      byReason[key].push(s.path.split('/').pop());
+    }
+    log(`  Skipped ${skipped.length} candidate(s):`, 'warn');
+    for (const [reason, files_] of Object.entries(byReason)) {
+      const sample = files_.slice(0, 5).join(', ') + (files_.length > 5 ? `, +${files_.length - 5} more` : '');
+      log(`    · ${files_.length}× ${reason}`, 'dim');
+      log(`        ${sample}`, 'dim');
+    }
+    for (const s of skipped) {
+      if (!S.raw.find(r => r.path === s.path)) {
+        S.raw.push({ path: s.path, reason: s.reason });
+      }
+    }
+  }
+
+  log('Scan: locating Mixins / Coremods / IEEPs…');
+  for (const p of javaFiles) {
+    if (isExcludedPath(p)) continue;
+    if (/mixin/i.test(p) && !S.mixins.find(m => m.path === p))
+      S.mixins.push({ path:p, className:p.split('/').pop().replace('.java',''), note:'Mixin / coremod candidate' });
+    if (/(?:^|\/)Core\.java$/.test(p) || /IFMLLoadingPlugin/.test(p)) {
+      if (!S.coremods.find(m => m.path === p))
+        S.coremods.push({ path:p, className:p.split('/').pop().replace('.java',''), note:'Coremod entry candidate' });
+    }
+    if (/IEEP|ExtendedEntityProperties|IExtendedEntityProperties/i.test(p)) {
+      if (!S.ieeps.find(m => m.path === p))
+        S.ieeps.push({ path:p, className:p.split('/').pop().replace('.java',''), note:'IEEP candidate' });
+    }
+  }
+  log(`  Mixins: ${S.mixins.length}, Coremods: ${S.coremods.length}, IEEP: ${S.ieeps.length}`);
+
+  log('Scan: linking related files (imports + naming)…');
+  try { linkRelatedFiles(); }
+  catch (e) { log('Link related files error: ' + e.message, 'err'); }
+  const relCount = ['blocks','tes','items','ents'].reduce((n, k) =>
+    n + S[k].reduce((m, e) => m + (e.relatedFiles ? e.relatedFiles.length : 0), 0), 0);
+  const linked = ['blocks','tes','items','ents'].reduce((n, k) =>
+    n + S[k].filter(e => e.relatedFiles && e.relatedFiles.length).length, 0);
+  log(`  ${linked} entries linked to ${relCount} related file(s)`, 'ok');
+
+  if (textureIndex) {
+    let matched = 0, total = 0;
+    const samples = [];
+    for (const kind of ['blocks','items','ents']) {
+      for (const e of S[kind]) {
+        total++;
+        const texs = getEntryTextures(e, kind);
+        if (texs.length) matched++;
+        else if (samples.length < 3) samples.push(`${kind}/${e.className}`);
+      }
+    }
+    log(`  ${matched}/${total} block/item/entity entries matched to textures`, matched ? 'ok' : 'warn');
+    if (samples.length) log(`  Example unmatched: ${samples.join(', ')}`, 'dim');
+  }
+
+  const known = new Set(Object.keys(files));
+  for (const p of javaFiles) {
+    if (!known.has(p) && !isGeneratedPath(p) && !isExcludedPath(p)) {
+      if (!S.raw.find(r => r.path === p)) {
+        S.raw.push({ path: p, reason: 'Not classified as Block/Item/Tile/Entity' });
+      }
+    }
+  }
+  const seen = new Set();
+  S.raw = S.raw.filter(r => { if (seen.has(r.path)) return false; seen.add(r.path); return true; });
+  log(`  Raw (unclassified) Java files: ${S.raw.length}`);
+  log('Scan complete.', 'ok');
+}
+
+function isGeneratedPath(p) { return /\/build\/|\/out\/|\/bin\/|\.gradle\/|\.git\//.test(p); }
+function isExcludedPath(p) {
+  return /\/(test|functionalTest|functionalTests|mock|samples?)\//.test(p) ||
+         /\/api\//.test(p) ||
+         isGeneratedPath(p);
+}
+function isCandidateFile(p) {
+  const basename = p.split('/').pop();
+  if (!basename.endsWith('.java')) return false;
+  const name = basename.slice(0, -5);
+  if (/^(Render|Gui|Container|Packet|Network|Proxy|Handler|Event|Config|Command|Recipe|Helper|Util|Log|Debug|Mixin|Accessor|Transformer|Hook|Model|Slot|Integration|Compat|Client|Registry|Registration|Registrar)/i.test(name)) return false;
+  if (/(Registry|Registration|Registrar|Handler|Factory|Builder)$/i.test(name)) return false;
+  if (/^(?:Block|Item|Tile|Entity)[A-Z]/.test(name)) return true;
+  if (/^(?:MTE|MultiBlock|GT_Meta)/.test(name)) return true;
+  if (/^Meta(?:TileEntity|Block|Item|Entity)/.test(name)) return true;
+  if (/^TE[A-Z]/.test(name)) return true;
+  if (/\/(block|blocks|tile|tiles|tileentity|tileentities|entity|entities|item|items|machines|multiblocks?|multiblock)\//i.test(p)) {
+    if (/^[A-Z]/.test(name)) return true;
+  }
+  return false;
+}
+function pickModCandidates(javaFiles) {
+  const modid = (S.mod.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const reponame = (repoMeta.repo || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const priority = []; const seen = new Set();
+  const add = p => { if (!seen.has(p)) { seen.add(p); priority.push(p); } };
+  for (const p of javaFiles) {
+    if (isExcludedPath(p)) continue;
+    const b = p.split('/').pop().replace('.java','');
+    const bl = b.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (b === 'Main' || b === 'Mod') { add(p); continue; }
+    if (modid && bl === modid) { add(p); continue; }
+    if (reponame && bl === reponame) { add(p); continue; }
+    if (/^(Mod|GT)[A-Z]/.test(b) || /Mod$/.test(b) || /(Core|Plugin)$/.test(b)) { add(p); continue; }
+    if (p.startsWith('src/main/java/')) {
+      const depth = p.slice('src/main/java/'.length).split('/').length - 1;
+      if (depth <= 2) { add(p); continue; }
+    }
+  }
+  return priority.slice(0, 60);
+}
+
+/* ============================================================
+   METADATA
+   ============================================================ */
+const isTemplate = v => typeof v === 'string' && /^\$\{[^}]+\}$/.test(v.trim());
+
+function parseMcmodInfo(txt) {
+  const base = txt.replace(/[\x00-\x1F\x7F]/g, c => c === '\n' || c === '\r' || c === '\t' ? ' ' : '');
+  const variants = [base, base.replace(/\/\/[^\n]*/g, ''), base.replace(/\/\/[^\n]*/g, '').replace(/,\s*([}\]])/g, '$1')];
+  for (let i = 0; i < variants.length; i++) {
+    try { const j = JSON.parse(variants[i]);
+      if (Array.isArray(j) && j[0]) { applyMcmodFields(j[0]); if (i > 0) log(`  mcmod.info parsed with lenient mode #${i}`); return; }
+    } catch {}
+  }
+  log('  mcmod.info JSON parse failed; regex fallback', 'warn');
+  const g = k => { const m = txt.match(new RegExp(`"${k}"\\s*:\\s*"([^"]*)"`)); return m ? m[1] : ''; };
+  applyMcmodFields({ name:g('name'), modid:g('modid'), version:g('version'), description:g('description') });
+}
+function applyMcmodFields(o) {
+  if (o.modid && !isTemplate(o.modid)) S.mod.id = S.mod.id || o.modid;
+  if (o.name && !isTemplate(o.name)) S.mod.name = S.mod.name || o.name;
+  if (o.version && !isTemplate(o.version)) S.mod.ver = S.mod.ver || o.version;
+  if (o.description && !isTemplate(o.description)) S.mod.desc = S.mod.desc || o.description;
+  if (Array.isArray(o.authorList)) {
+    const valid = o.authorList.filter(a => !isTemplate(a));
+    if (valid.length) S.mod.author = S.mod.author || valid.join(', ');
+  } else if (o.author && !isTemplate(o.author)) {
+    S.mod.author = S.mod.author || o.author;
+  }
+}
+function parseGradleProperties(txt) {
+  const g = k => { const m = txt.match(new RegExp(`^${k}\\s*=\\s*(.+)$`, 'm')); return m ? m[1].trim() : ''; };
+  const pickFirstValid = (...vals) => vals.find(v => v && !isTemplate(v)) || '';
+  S.mod.name = S.mod.name || pickFirstValid(g('modName'), g('rootProject.name'));
+  S.mod.id = S.mod.id || pickFirstValid(g('modId'), g('modid'));
+  S.mod.pkg = S.mod.pkg || pickFirstValid(g('modGroup'), g('group'));
+  S.mod.ver = S.mod.ver || pickFirstValid(g('version'), g('modVersion'));
+}
+function parseDependencies(txt) {
+  const deps = [...txt.matchAll(/(?:implementation|compileOnly|api|runtimeOnly)\s*\(?['"]([^'"]+)['"]/g)].map(m => m[1]);
+  if (deps.length) S.mod.deps = deps;
+}
+function parseModAnnotation(args, source, path) {
+  const get = key => { const re = new RegExp(`${key}\\s*=\\s*["']([^"']+)["']`); const m = args.match(re); return m ? m[1] : ''; };
+  const opt = (val, cur) => (val && !isTemplate(val)) ? (cur || val) : cur;
+  S.mod.id = opt(get('modid') || get('modId'), S.mod.id);
+  S.mod.name = opt(get('name'), S.mod.name);
+  S.mod.ver = opt(get('version'), S.mod.ver);
+  const pkgMatch = source.match(/^package\s+([\w.]+);/m);
+  if (pkgMatch) S.mod.pkg = S.mod.pkg || pkgMatch[1];
+  S.mod.author = opt(get('author'), S.mod.author);
+  S.mod.desc = opt(get('description'), S.mod.desc);
+  const deps = get('dependencies');
+  if (deps && !isTemplate(deps)) S.mod.deps = deps.split(',').map(s => s.trim()).filter(Boolean);
+  S.raw.push({ path, reason: '@Mod entry class (metadata parsed; source kept raw)' });
+}
+function stripComments(txt) {
+  return txt.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+}
+
+/* ============================================================
+   CLASSIFY
+   ============================================================ */
+function classifyClass(path, txt) {
+  const stripped = stripComments(txt);
+  const pkg = (txt.match(/^package\s+([\w.]+);/m) || [])[1] || '';
+  let clsMatch = stripped.match(
+    /^[ \t]*(?:(?:public|protected|private|abstract|final|static|strictfp)\s+)*(?:class|interface|enum)\s+(\w+)/m
+  );
+  if (!clsMatch) clsMatch = stripped.match(/\b(?:class|interface|enum)\s+(\w+)/);
+  if (!clsMatch) return { skip: 'no class declaration found' };
+  const cls = clsMatch[1];
+
+  if (/^(Render|Gui|Container|Packet|Network|Proxy|Handler|Event|Config|Command|Recipe|Helper|Util|Log|Debug|Mixin|Accessor|Transformer|Hook|Model|Slot|Integration|Compat|Client|Registry|Registration|Registrar)/i.test(cls))
+    return { skip: 'excluded by name prefix (UI/helper)' };
+  if (/(Renderer|Gui|PacketHandler|EventHandler|Slot|Helper|Util|Event)$/.test(cls)
+      && !/^(Block|Item|Tile|Entity)/.test(cls))
+    return { skip: 'excluded by name suffix' };
+
+  let kind = null;
+  if (/^Tile/.test(cls)) kind = 'te';
+  else if (/^TE[A-Z]/.test(cls)) kind = 'te';
+  else if (/^MTE/.test(cls)) kind = 'te';
+  else if (/^MultiBlock/.test(cls)) kind = 'te';
+  else if (/^(?:GT_)?MetaTileEntity/i.test(cls)) kind = 'te';
+  else if (/^(?:GT_)?MetaBlock/i.test(cls)) kind = 'block';
+  else if (/^(?:GT_)?MetaItem/i.test(cls)) kind = 'item';
+  else if (/^(?:GT_)?MetaEntity/i.test(cls)) kind = 'entity';
+  else if (/^Block/.test(cls)) kind = 'block';
+  else if (/^Item/.test(cls)) kind = 'item';
+  else if (/^Entity/.test(cls)) kind = 'entity';
+
+  if (!kind) {
+    if (/(?:^|\s)extends\s+[\w.]*TileEntity\b/.test(stripped)) kind = 'te';
+    else if (/(?:^|\s)extends\s+[\w.]*(?:MTE|MultiBlock|MetaTileEntity)\w*/.test(stripped)) kind = 'te';
+    else if (/(?:^|\s)extends\s+[\w.]*Block\w*/.test(stripped) &&
+             !/(?:^|\s)extends\s+[\w.]*ItemBlock\b/.test(stripped)) kind = 'block';
+    else if (/(?:^|\s)extends\s+[\w.]*Item\w*/.test(stripped)) kind = 'item';
+    else if (/(?:^|\s)extends\s+[\w.]*Entity\w*/.test(stripped)) kind = 'entity';
+  }
+
+  if (!kind) {
+    if (/\/(tiles?|te|tileentity|tileentities)\//i.test(path)) kind = 'te';
+    else if (/\/(blocks?)\//i.test(path)) kind = 'block';
+    else if (/\/(items?)\//i.test(path)) kind = 'item';
+    else if (/\/(entities|entity|mobs?)\//i.test(path)) kind = 'entity';
+    else if (/\/(machines|multiblocks?|multiblock|mtemachines)\//i.test(path)) kind = 'te';
+  }
+
+  if (!kind) {
+    const extM = stripped.match(/(?:^|\s)extends\s+([\w.]+)/);
+    const extInfo = extM ? ` (extends ${extM[1]})` : '';
+    return { skip: 'no matching extends/prefix/directory' + extInfo };
+  }
+
+  const arr = kind === 'te' ? S.tes : kind === 'block' ? S.blocks : kind === 'item' ? S.items : S.ents;
+  let entry = arr.find(x => x.sourcePath === path);
+  if (!entry) {
+    const cleanName = (cls
+      .replace(/^(TileEntity|Tile|Block|Item|Entity|MTE|MultiBlock|TE(?=[A-Z])|GT_Meta(?:TileEntity|Block|Item|Entity)?|Meta(?:TileEntity|Block|Item|Entity)?)/, '')
+      || cls
+    ).replace(/^_+/, '') || cls;
+    entry = {
+      name: cleanName,
+      className: cls, package: pkg, sourcePath: path, parsed: true,
+      imports: extractImports(txt)
+    };
+    if (kind === 'block') entry.registryName = raw(cleanName);
+    if (kind === 'item') { entry.registryName = raw(cleanName); entry.maxStack = 64; }
+    if (kind === 'entity') entry.registryName = raw(cleanName);
+    if (kind === 'te') {
+      const slots = (stripped.match(/new\s+ItemStack\s*\[\s*(\d+)\s*\]/) || [])[1];
+      entry.slots = slots ? parseInt(slots) : 0;
+      entry.gui = /Container|GuiContainer/.test(stripped);
+    }
+    arr.push(entry);
+  }
+  if (kind === 'block') {
+    entry.material = entry.material || (stripped.match(/Material\.(\w+)/) || [])[1] || '';
+    entry.hardness = entry.hardness ?? parseFloat((stripped.match(/setHardness\s*\(\s*([\d.]+)/) || [])[1] || '0');
+    entry.resistance = entry.resistance ?? parseFloat((stripped.match(/setResistance\s*\(\s*([\d.]+)/) || [])[1] || '0');
+    entry.harvestTool = entry.harvestTool || (stripped.match(/setHarvestLevel\s*\(\s*"(\w+)"/) || [])[1] || '';
+    entry.harvestLevel = entry.harvestLevel ?? parseInt((stripped.match(/setHarvestLevel\s*\(\s*"\w+"\s*,\s*(\d+)/) || [])[1] || '0');
+  }
+  if (kind === 'item') entry.maxStack = entry.maxStack ?? parseInt((stripped.match(/setMaxStackSize\s*\(\s*(\d+)/) || [])[1] || '64');
+  if (kind === 'entity') {
+    entry.hp = entry.hp ?? parseFloat((stripped.match(/maxHealth\s*\)[^)]*setBaseValue\s*\(\s*([\d.]+)/) || [])[1] || '0');
+    entry.spd = entry.spd ?? parseFloat((stripped.match(/movementSpeed\s*\)[^)]*setBaseValue\s*\(\s*([\d.]+)/) || [])[1] || '0');
+  }
+  return { kind, cls };
+}
+
+/* ============================================================
+   LINK RELATED FILES
+   ============================================================ */
+function linkRelatedFiles() {
+  relationIndex = null;
+  const allEntries = [];
+  for (const kind of ['blocks','tes','items','ents']) {
+    for (const e of S[kind]) allEntries.push({ kind, entry: e });
+  }
+  for (const { entry } of allEntries) {
+    const rels = new Map();
+    for (const imp of (entry.imports || [])) {
+      if (imp.endsWith('.*')) continue;
+      const path = fqnIndex[imp];
+      if (!path || path === entry.sourcePath) continue;
+      rels.set(path, 'import');
+    }
+    for (const cand of namingCandidates(entry)) {
+      const paths = basenameIndex[cand];
+      if (!paths || !Array.isArray(paths)) continue;
+      for (const p of paths) {
+        if (p === entry.sourcePath) continue;
+        if (!rels.has(p)) rels.set(p, 'name-pattern');
+      }
+    }
+    entry.relatedFiles = [...rels.entries()]
+      .map(([path, kind]) => ({ path, kind }))
+      .sort((a, b) => a.path.localeCompare(b.path));
+  }
+}
+function namingCandidates(entry) {
+  const cls = entry.className || '';
+  const out = [];
+  const te = cls.match(/^(?:Tile(?:Entity)?|MTE|TE)([A-Z].*)$/);
+  if (te) {
+    const core = te[1];
+    out.push(
+      `Container${cls}`, `Container${core}`, `Gui${core}`, `Gui${cls}`,
+      `Render${core}`, `Render${cls}`, `${cls}Renderer`, `${core}Renderer`
+    );
+  }
+  const bl = cls.match(/^Block([A-Z].*)$/);
+  if (bl) {
+    const core = bl[1];
+    out.push(`ItemBlock${core}`, `Item${core}Block`, `TileEntity${core}`, `Tile${core}`, `Block${core}`);
+  }
+  const ib = cls.match(/^ItemBlock([A-Z].*)$/);
+  if (ib) out.push(`Block${ib[1]}`);
+  const it = cls.match(/^Item([A-Z].*)$/);
+  if (it && !/^ItemBlock/.test(cls)) out.push(`ItemBlock${it[1]}`, `Block${it[1]}`);
+  const en = cls.match(/^Entity([A-Z].*)$/);
+  if (en) out.push(`Render${en[1]}`, `${en[1]}Renderer`, `RenderEntity${en[1]}`);
+  return [...new Set(out)];
+}
+function findEntryByPath(path) {
+  for (const kind of ['blocks', 'tes', 'items', 'ents']) {
+    const idx = S[kind].findIndex(e => e.sourcePath === path);
+    if (idx >= 0) return { tab: kind, index: idx };
+  }
+  return null;
+}
+function buildRelationIndex() {
+  if (relationIndex) return relationIndex;
+  const forward = {};
+  const reverse = {};
+  for (const kind of ['blocks','tes','items','ents']) {
+    for (const e of S[kind]) {
+      if (!e.relatedFiles || !e.relatedFiles.length) continue;
+      if (!forward[e.sourcePath]) forward[e.sourcePath] = [];
+      for (const r of e.relatedFiles) {
+        forward[e.sourcePath].push(r);
+        if (!reverse[r.path]) reverse[r.path] = [];
+        reverse[r.path].push({ path: e.sourcePath, kind, name: e.name || e.className });
+      }
+    }
+  }
+  relationIndex = { forward, reverse };
+  return relationIndex;
+}
+
+/* ============================================================
+   FILE MODAL
+   ============================================================ */
+async function showFileModal(path, opts = {}) {
+  const modal = document.getElementById('fileModal');
+  const wasOpen = !modal.hidden;
+  if (!opts.back) {
+    if (wasOpen && fileNav.cur) fileNav.stack.push(fileNav.cur);
+    else if (!wasOpen) fileNav.stack = [];
+  }
+  fileNav.cur = { path, line: opts.line || 0 };
+  updateBackBtn();
+  document.getElementById('fileModalTitle').textContent = path;
+  const { reverse, forward } = buildRelationIndex();
+  const rev = reverse[path] || [];
+  const fwd = forward[path] || [];
+  const refsEl = document.getElementById('fileModalRefs');
+  const chips = [];
+  if (rev.length) {
+    chips.push('<span class="small" style="color:var(--m)">Referenced by:</span>');
+    for (const r of rev) {
+      chips.push(`<button class="rel-chip" data-relatedpath="${esc(r.path)}">
+        <span class="rel-name">${esc(r.name)}</span>
+        <span class="badge parsed">${esc(r.kind.replace(/s$/, ''))}</span>
+      </button>`);
+    }
+  }
+  if (fwd.length) {
+    chips.push('<span class="small" style="color:var(--m); margin-left:8px">Relates to:</span>');
+    for (const r of fwd) {
+      chips.push(`<button class="rel-chip" data-relatedpath="${esc(r.path)}">
+        <span class="rel-name">${esc(r.path.split('/').pop())}</span>
+        <span class="badge link">${esc(r.kind)}</span>
+      </button>`);
+    }
+  }
+  if (chips.length) { refsEl.style.display = ''; refsEl.innerHTML = chips.join(' '); }
+  else refsEl.style.display = 'none';
+
+  const gotoBtn = document.getElementById('fileModalGoto');
+  const classified = findEntryByPath(path);
+  if (classified) {
+    gotoBtn.style.display = '';
+    gotoBtn.onclick = () => { tab = classified.tab; sel = classified.index; modal.hidden = true; draw(); };
+  } else {
+    gotoBtn.style.display = 'none'; gotoBtn.onclick = null;
+  }
+
+  const host = document.getElementById('fileModalViewerHost');
+  host.innerHTML = makeViewerHTML(path);
+  modal.hidden = false;
+  const viewerEl = host.querySelector('.code-viewer');
+  await loadSourceIntoViewer(viewerEl);
+  if (opts.line) gotoLine(viewerEl, opts.line);
+}
+
+/* ============================================================
+   TEXTURE MODAL + ANIMATION (mcmeta-aware, cache-only)
+   ============================================================ */
+let texSpeed = 1;
+let texState = null;
+let texLoadToken = 0;
+
+function texDisplayDims() {
+  const st = texState;
+  if (!st || st.gif) return [texNaturalW, texNaturalH];
+  return st.strip ? [st.img.naturalWidth, st.img.naturalHeight] : [st.fw, st.fh];
+}
+function sizeTexCanvas() {
+  const cv = document.getElementById('textureModalCanvas');
+  const [w, h] = texDisplayDims();
+  if (cv.width !== w) cv.width = w;
+  if (cv.height !== h) cv.height = h;
+}
+function drawTexFrame() {
+  const st = texState;
+  if (!st || st.gif) return;
+  const cv = document.getElementById('textureModalCanvas');
+  const ctx = cv.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  if (st.strip || st.frames <= 1) {
+    ctx.drawImage(st.img, 0, 0);
+  } else {
+    const sheetFrame = st.frameOrder[st.frameIdx];
+    ctx.drawImage(st.img, 0, sheetFrame * st.fw, st.fw, st.fw, 0, 0, st.fw, st.fw);
+  }
+}
+function updateTexInfo() {
+  const st = texState;
+  const info = document.getElementById('texFrameInfo');
+  if (!st || st.frames <= 1) { info.textContent = ''; return; }
+  const ms = frameDurationMs(st.frametime, texSpeed);
+  const fps = 1000 / ms;
+  const fpsTxt = (fps < 10 ? fps.toFixed(1) : Math.round(fps)) + ' fps';
+  const ftTxt = `frametime ${st.frametime} tick${st.frametime === 1 ? '' : 's'}${st.mcmetaSource ? '' : ' (default)'}`;
+  info.textContent = st.strip
+    ? `${st.frames} frame${st.frames === 1 ? '' : 's'} · ${ftTxt}`
+    : `frame ${st.frameIdx + 1} / ${st.frames} · ${ftTxt} · ${fpsTxt}`;
+  const play = document.getElementById('texPlay');
+  play.textContent = st.playing ? '⏸ Pause' : '▶ Play';
+  play.classList.toggle('on', st.playing);
+  document.getElementById('texStrip').classList.toggle('on', st.strip);
+  document.getElementById('texStrip').textContent = st.strip ? 'Animate' : 'Show strip';
+}
+
+function applyTextureZoom() {
+  const cv = document.getElementById('textureModalCanvas');
+  const img = document.getElementById('textureModalImg');
+  const wrap = document.getElementById('textureModalImgWrap');
+  if (!cv || !wrap) return;
+  const el = (texState && texState.gif) ? img : cv;
+  const [dw, dh] = texDisplayDims();
+  let scale;
+  if (texZoomMode === 'fit') {
+    const cw = wrap.clientWidth || 1, ch = wrap.clientHeight || 1;
+    scale = Math.min(cw / dw, ch / dh);
+    if (scale >= 1) scale = Math.floor(scale);
+  } else {
+    scale = parseInt(texZoomMode, 10) || 1;
+  }
+  el.style.width  = Math.max(1, Math.floor(dw * scale)) + 'px';
+  el.style.height = Math.max(1, Math.floor(dh * scale)) + 'px';
+  document.querySelectorAll('#textureModalZoomBar button').forEach(b => {
+    b.classList.toggle('on', b.dataset.texzoom === texZoomMode);
+  });
+}
+
+function openTextureModal(path) {
+  const modal = document.getElementById('textureModal');
+  const item = textureIndex && textureIndex.all.find(x => x.path === path);
+  document.getElementById('textureModalTitle').textContent =
+    item ? `${item.basename}.${item.ext}` : path.split('/').pop();
+
+  const cv = document.getElementById('textureModalCanvas');
+  const img = document.getElementById('textureModalImg');
+  const dimsEl = document.getElementById('textureModalDims');
+  const bar = document.getElementById('textureModalAnimBar');
+  const token = ++texLoadToken;
+  const isGif = /\.gif$/i.test(path);
+
+  texState = null;
+  texNaturalW = 16; texNaturalH = 16;
+  dimsEl.textContent = '';
+  bar.hidden = true;
+  cv.hidden = false; img.hidden = true;
+  cv.width = 16; cv.height = 16;
+  cv.getContext('2d').clearRect(0, 0, 16, 16);
+
+  // mcmeta is read from the cache only — no GitHub request at this point.
+  const mcmetaPromise = getMcmeta(path);
+
+  const loader = new Image();
+  loader.onload = async () => {
+    if (token !== texLoadToken) return;
+    const w = loader.naturalWidth || 16, h = loader.naturalHeight || 16;
+    texNaturalW = w; texNaturalH = h;
+    if (isGif) {
+      texState = { gif: true, frames: 1 };
+      img.src = loader.src; img.hidden = false; cv.hidden = true;
+      dimsEl.textContent = `${w}×${h} (GIF, browser-played)`;
+      applyTextureZoom();
+      return;
+    }
+    const sheetFrames = (h > w && h % w === 0) ? h / w : 1;
+    const defaultOrder = Array.from({ length: sheetFrames }, (_, i) => i);
+    // Set up the state with defaults so we can start animating immediately.
+    texState = {
+      img: loader,
+      sheetFrames,
+      frameOrder: defaultOrder,
+      frames: defaultOrder.length,
+      fw: w,
+      fh: sheetFrames > 1 ? w : h,
+      frametime: 1,
+      mcmetaSource: false,
+      frameIdx: 0,
+      last: performance.now(),
+      playing: true,
+      strip: false,
+    };
+    sizeTexCanvas(); drawTexFrame();
+    bar.hidden = sheetFrames <= 1;
+    updateTexInfo();
+    dimsEl.textContent = sheetFrames > 1 ? `${w}×${h} · ${sheetFrames} frames` : `${w}×${h}`;
+    applyTextureZoom();
+
+    // Upgrade to mcmeta values when available (this is an in-memory
+    // promise — it resolves on the next microtask because the mcmeta
+    // is already cached).
+    if (sheetFrames > 1 && textureIndex && textureIndex.mcmetaSet.has(path + '.mcmeta')) {
+      const mc = await withTimeout(mcmetaPromise, 200, null);
+      if (token !== texLoadToken || !texState) return;
+      if (mc) {
+        const newOrder = buildFrameOrder(sheetFrames, mc);
+        texState.frameOrder = newOrder;
+        texState.frames = newOrder.length;
+        texState.frametime = mc.frametime;
+        texState.mcmetaSource = true;
+        texState.frameIdx = Math.min(texState.frameIdx, newOrder.length - 1);
+        texState.last = performance.now();
+        updateTexInfo();
+        dimsEl.textContent = `${w}×${h} · ${newOrder.length} frame${newOrder.length === 1 ? '' : 's'} · frametime ${mc.frametime} tick${mc.frametime === 1 ? '' : 's'}`;
+      }
+    }
+  };
+  loader.onerror = () => {
+    if (token !== texLoadToken) return;
+    dimsEl.textContent = 'failed to load';
+    applyTextureZoom();
+  };
+  loader.src = rawUrl(path);
+
+  document.getElementById('textureModalPath').textContent = path;
+  document.getElementById('textureModalCopyUrl').onclick = () => {
+    navigator.clipboard.writeText(rawUrl(path))
+      .then(() => log('Texture URL copied.', 'ok'))
+      .catch(err => log('Copy failed: ' + err.message, 'err'));
+  };
+  document.getElementById('textureModalCopyPath').onclick = () => {
+    navigator.clipboard.writeText(path)
+      .then(() => log('Texture path copied.', 'ok'))
+      .catch(err => log('Copy failed: ' + err.message, 'err'));
+  };
+
+  modal.hidden = false;
+  applyTextureZoom();
+}
+
+document.querySelectorAll('#textureModalZoomBar button').forEach(b => {
+  b.addEventListener('click', () => {
+    texZoomMode = b.dataset.texzoom;
+    applyTextureZoom();
+  });
+});
+document.getElementById('texPlay').addEventListener('click', () => {
+  if (!texState || texState.frames <= 1) return;
+  texState.playing = !texState.playing;
+  texState.last = performance.now();
+  updateTexInfo();
+});
+function texStep(d) {
+  const st = texState;
+  if (!st || st.frames <= 1 || st.strip) return;
+  st.playing = false;
+  st.frameIdx = (st.frameIdx + d + st.frames) % st.frames;
+  drawTexFrame(); updateTexInfo();
+}
+document.getElementById('texPrev').addEventListener('click', () => texStep(-1));
+document.getElementById('texNext').addEventListener('click', () => texStep(1));
+document.getElementById('texStrip').addEventListener('click', () => {
+  if (!texState || texState.frames <= 1) return;
+  texState.strip = !texState.strip;
+  sizeTexCanvas(); drawTexFrame(); updateTexInfo(); applyTextureZoom();
+});
+document.getElementById('texSpeed').addEventListener('change', e => {
+  texSpeed = parseFloat(e.target.value) || 1;
+  if (texState) texState.last = performance.now();
+  updateTexInfo();
+});
+window.addEventListener('resize', () => {
+  const m = document.getElementById('textureModal');
+  if (m && !m.hidden) applyTextureZoom();
+});
+
+/* ----- animated thumbnails (grid, entry pages, search) + modal clock ----- */
+const animThumbs = new Set();
+const thumbIO = ('IntersectionObserver' in window)
+  ? new IntersectionObserver(entries => {
+      for (const en of entries) { if (en.isIntersecting) animThumbs.add(en.target); else animThumbs.delete(en.target); }
+    })
+  : null;
+function upgradeThumb(img) {
+  if (img.dataset.anim) return;
+  const w = img.naturalWidth, h = img.naturalHeight;
+  if (!w || h <= w || h % w || /\.gif(\?|$)/i.test(img.currentSrc || img.src)) return;
+  const sheetFrames = h / w;
+  // Use cached mcmeta when available. The mcmeta was prefetched during
+  // explore, so this is a pure in-memory read — no GitHub request.
+  let frametime = 1, frameOrder = null, fromMcmeta = false;
+  const repoPath = img.dataset.repoPath || '';
+  if (repoPath && textureIndex && textureIndex.mcmetaSet) {
+    const mcPath = repoPath + '.mcmeta';
+    if (files[mcPath]) {
+      const mc = parseMcmeta(files[mcPath]);
+      if (mc) {
+        frametime = mc.frametime;
+        frameOrder = buildFrameOrder(sheetFrames, mc);
+        fromMcmeta = true;
+      }
+    }
+  }
+  if (!frameOrder) frameOrder = Array.from({ length: sheetFrames }, (_, i) => i);
+
+  img.dataset.anim = '1';
+  const cv = document.createElement('canvas');
+  cv.width = w; cv.height = w;
+  cv.className = img.className;
+  cv.title = img.parentElement ? (img.parentElement.title || '') : '';
+  cv._src = img;
+  cv._frameOrder = frameOrder;
+  cv._frames = frameOrder.length;
+  cv._frameDur = frameDurationMs(frametime);
+  cv._w = w;
+  cv._f = -1;
+  cv._mcmeta = fromMcmeta;
+  const ctx = cv.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  const f0 = frameOrder[0];
+  ctx.drawImage(img, 0, f0 * w, w, w, 0, 0, w, w);
+  cv._f = 0;
+  img.replaceWith(cv);
+  if (thumbIO) thumbIO.observe(cv); else animThumbs.add(cv);
+}
+document.addEventListener('load', e => {
+  const t = e.target;
+  if (t && t.tagName === 'IMG' && (t.classList.contains('gs-thumb') || t.closest('.texture-thumb'))) upgradeThumb(t);
+}, true);
+
+function animTick(t) {
+  for (const cv of animThumbs) {
+    if (!cv.isConnected) { animThumbs.delete(cv); continue; }
+    const f = Math.floor(t / cv._frameDur) % cv._frames;
+    if (f === cv._f) continue;
+    cv._f = f;
+    const sheetFrame = cv._frameOrder[f];
+    const ctx = cv.getContext('2d');
+    ctx.clearRect(0, 0, cv._w, cv._w);
+    ctx.drawImage(cv._src, 0, sheetFrame * cv._w, cv._w, cv._w, 0, 0, cv._w, cv._w);
+  }
+  const st = texState, tm = document.getElementById('textureModal');
+  if (st && !st.gif && st.frames > 1 && st.playing && !st.strip && tm && !tm.hidden) {
+    const ms = frameDurationMs(st.frametime, texSpeed);
+    const steps = Math.floor((t - st.last) / ms);
+    if (steps > 0) {
+      st.last += steps * ms;
+      st.frameIdx = (st.frameIdx + steps) % st.frames;
+      drawTexFrame(); updateTexInfo();
+    }
+  }
+  requestAnimationFrame(animTick);
+}
+requestAnimationFrame(animTick);
+
+/* ============================================================
+   UI
+   ============================================================ */
+function setStatus(msg, cls) {
+  const el = $('#status');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'small ' + (cls || '');
+}
+
+const SIDEBAR_LIST_TABS = ['blocks', 'tes', 'items', 'ents'];
+
+function draw() {
+  const side = $('#side'), form = $('#form');
+  if (!side || !form) return;
+
+  const tabButtons = Object.entries(TABS).map(([k, v]) =>
+    `<button data-tab="${k}" class="${k === tab ? 'on' : ''}">${v}</button>`
+  ).join('');
+
+  if (SIDEBAR_LIST_TABS.includes(tab) && Array.isArray(S[tab])) {
+    side.innerHTML = tabButtons +
+      '<hr style="border-color:var(--b);margin:8px 0;">' +
+      sideSearchHTML(tab, S[tab].length) +
+      sortBarHTML() +
+      '<div id="sideList">' + renderSidebarList(S[tab]) + '</div>';
+    bindSidebarSearch(side);
+  } else {
+    side.innerHTML = tabButtons;
+  }
+
+  if (tab === 'overview') { drawOverview(form); return; }
+  if (tab === 'export')   { drawExport(form); return; }
+  if (tab === 'raw')      { drawRaw(form); bindListFilter(form, 'raw'); return; }
+  if (tab === 'mixins')   { drawMixins(form); bindListFilter(form, 'mixins'); return; }
+  if (tab === 'ieeps')    { drawIEEPs(form); bindListFilter(form, 'ieeps'); return; }
+  if (tab === 'textures') { drawTextures(form); return; }
+
+  const arr = S[tab];
+  if (!arr || !arr.length) {
+    form.innerHTML = `<p class="note">Nothing parsed in <b>${TABS[tab]}</b>. Check <b>Raw / Unparsed</b>.</p>`;
+    return;
+  }
+  const o = arr[sel];
+  if (!o) { sel = 0; draw(); return; }
+
+  let h = `<h3>${esc(o.name || o.className || 'Item')} <span class="badge ${o.parsed ? 'parsed' : 'raw'}">${o.parsed ? 'parsed' : 'raw'}</span> <button class="del" data-act="del" style="float:right">Delete</button></h3>`;
+  h += `<p class="src">${esc(o.sourcePath || '')}</p>`;
+
+  if (tab === 'blocks') {
+    h += `<div class="g">${fld('Name','name',o.name||'')}${fld('Registry name','registryName',o.registryName||'')}${fld('Material','material',o.material||'rock')}${fld('Hardness','hardness',o.hardness ?? 0,'number')}${fld('Resistance','resistance',o.resistance ?? 0,'number')}${fld('Harvest tool','harvestTool',o.harvestTool||'','select',['','pickaxe','axe','shovel'])}${fld('Harvest level','harvestLevel',o.harvestLevel ?? 0,'number')}</div>`;
+  }
+  if (tab === 'tes') {
+    h += `<div class="g">${fld('Name','name',o.name||'')}${fld('Class','className',o.className||'')}${fld('Package','package',o.package||'')}${fld('Slots','slots',o.slots ?? 0,'number')}</div>${fld('Has GUI','gui',!!o.gui,'check')}`;
+  }
+  if (tab === 'items') {
+    h += `<div class="g">${fld('Name','name',o.name||'')}${fld('Registry name','registryName',o.registryName||'')}${fld('Max stack','maxStack',o.maxStack ?? 64,'number')}</div>`;
+  }
+  if (tab === 'ents') {
+    h += `<div class="g">${fld('Name','name',o.name||'')}${fld('Class','className',o.className||'')}${fld('Registry name','registryName',o.registryName||'')}${fld('Health','hp',o.hp ?? 0,'number')}${fld('Speed','spd',o.spd ?? 0,'number')}</div>`;
+  }
+
+  h += `<div class="textures-section">${renderTexturesSection(o, tab)}</div>`;
+
+  if (o.relatedFiles && o.relatedFiles.length) {
+    h += `<h3>Related files (${o.relatedFiles.length})</h3>
+      <div class="relations">${
+        o.relatedFiles.map(r => {
+          const found = findEntryByPath(r.path);
+          const badgeClass = found ? 'parsed' : 'raw';
+          return `<button class="rel-chip" data-relatedpath="${esc(r.path)}" title="${esc(r.path)}">
+            <span class="rel-name">${esc(r.path.split('/').pop())}</span>
+            <span class="badge ${badgeClass}">${found ? 'linked' : 'raw'}</span>
+            <span class="badge link">${esc(r.kind)}</span>
+          </button>`;
+        }).join('')
+      }</div>
+      <p class="note">Imports and naming patterns connect this entry to other files. Click any chip to view it.</p>`;
+  } else {
+    h += `<p class="note">No related files detected (no matching imports or naming patterns).</p>`;
+  }
+
+  if (o.sourcePath) h += `<h3>Source</h3>${makeViewerHTML(o.sourcePath)}`;
+  h += `<p class="note">Partial reconstruction. Editing the fields above changes the model only.</p>`;
+  form.innerHTML = h;
+
+  form.querySelectorAll('[data-k]').forEach(inp => {
+    inp.addEventListener('input', e => {
+      const k = e.target.dataset.k;
+      const target = S[tab][sel];
+      if (!target) return;
+      target[k] = e.target.type === 'checkbox' ? e.target.checked
+        : e.target.type === 'number' ? (parseFloat(e.target.value) || 0)
+        : e.target.value;
+      if (k === 'name' || k === 'className') {
+        const btn = side.querySelector(`[data-sel="${sel}"]`);
+        if (btn) btn.textContent = labelOf(target);
+      }
+      if (k === 'name' || k === 'className' || k === 'registryName') {
+        textureCache.delete(target.sourcePath);
+        const texSection = form.querySelector('.textures-section');
+        if (texSection) texSection.innerHTML = renderTexturesSection(target, tab);
+      }
+    });
+  });
+
+  if (o.sourcePath) {
+    const v = form.querySelector('.code-viewer');
+    if (v) loadSourceIntoViewer(v);
+  }
+}
+
+function fld(label, key, value, type = 'text', opts = []) {
+  if (type === 'check') return `<label class="c"><input type="checkbox" data-k="${key}" ${value ? 'checked' : ''}> ${label}</label>`;
+  if (type === 'select') return `<label>${label}<select data-k="${key}">${opts.map(x => {
+    const [a, b] = Array.isArray(x) ? x : [x, x];
+    return `<option value="${esc(a)}" ${a == value ? 'selected' : ''}>${esc(b)}</option>`;
+  }).join('')}</select></label>`;
+  if (type === 'area') return `<label>${label}<textarea data-k="${key}" rows="${opts || 6}" spellcheck="false">${esc(value)}</textarea></label>`;
+  return `<label>${label}<input data-k="${key}" type="${type}" value="${esc(value)}" step="any"></label>`;
+}
+
+function drawOverview(f) {
+  const m = S.mod;
+  const c = {
+    blocks: S.blocks.length, tes: S.tes.length, items: S.items.length, ents: S.ents.length,
+    mixins: S.mixins.length, ieeps: S.ieeps.length, coremods: S.coremods.length,
+    raw: S.raw.length, files: fileList.length,
+    textures: textureIndex ? textureIndex.all.length : 0
+  };
+  const total = c.blocks + c.tes + c.items + c.ents;
+  const linkedEntries = ['blocks','tes','items','ents'].reduce((n,k) =>
+    n + S[k].filter(e => e.relatedFiles && e.relatedFiles.length).length, 0);
+  const linkedFiles = new Set();
+  for (const k of ['blocks','tes','items','ents'])
+    for (const e of S[k])
+      for (const r of (e.relatedFiles || [])) linkedFiles.add(r.path);
+  let withTex = 0;
+  if (textureIndex) {
+    for (const k of ['blocks','items','ents'])
+      for (const e of S[k]) { if (getEntryTextures(e, k).length) withTex++; }
+  }
+
+  f.innerHTML = `
+    <h3>Repository overview</h3>
+    <p class="src">${esc(repoMeta.owner)}/${esc(repoMeta.repo)} · branch <b>${esc(repoMeta.branch)}</b></p>
+    ${total === 0 ? '<p class="err"><b>Nothing was classified.</b> Open Logs and check the classification step.</p>' : ''}
+    <div class="g">
+      ${fld('Mod name','name',m.name||'')}
+      ${fld('Mod ID','id',m.id||'')}
+      ${fld('Package','pkg',m.pkg||'')}
+      ${fld('Version','ver',m.ver||'')}
+      ${fld('Author','author',m.author||'')}
+      ${fld('Description','desc',m.desc||'')}
+    </div>
+    <h3>Parsed content</h3>
+    <p>
+      <span class="badge parsed">${c.blocks} blocks</span>
+      <span class="badge parsed">${c.tes} tile entities</span>
+      <span class="badge parsed">${c.items} items</span>
+      <span class="badge parsed">${c.ents} entities</span>
+      <span class="badge raw">${c.mixins} mixin/core</span>
+      <span class="badge raw">${c.ieeps} IEEP</span>
+      <span class="badge fail">${c.raw} raw files</span>
+    </p>
+    <h3>Relations &amp; textures</h3>
+    <p>
+      <span class="badge link">${linkedEntries} entries linked</span>
+      <span class="badge link">${linkedFiles.size} related file(s)</span>
+      <span class="badge parsed">${withTex} entries with textures</span>
+      <span class="badge parsed">${c.textures} textures indexed</span>
+    </p>
+    <h3>Warnings (${warnings.length})</h3>
+    ${warnings.length ? warnings.map(w => `<p class="warn">⚠ ${esc(w)}</p>`).join('') : '<p class="ok">None.</p>'}
+    <p class="note">Animated textures use <code>.mcmeta</code> frametimes (1 tick = 50ms), prefetched at explore time and cached alongside the mod. Missing mcmeta defaults to 1 tick/frame. Cached automatically after every explore.</p>
+  `;
+  f.querySelectorAll('[data-k]').forEach(inp => {
+    inp.addEventListener('input', e => { S.mod[e.target.dataset.k] = e.target.value; });
+  });
+}
+
+function drawTextures(f) {
+  if (!textureIndex || !textureIndex.all.length) {
+    f.innerHTML = `<p class="note">No textures found. Explore a repository that contains assets/textures/*.png.</p>`;
+    return;
+  }
+  const q = textureSearch.toLowerCase().trim();
+  const groups = {};
+  for (const item of textureIndex.all) {
+    if (textureFolderFilter !== 'all' && item.folder !== textureFolderFilter) continue;
+    if (q && !item.basename.toLowerCase().includes(q) && !item.path.toLowerCase().includes(q)) continue;
+    (groups[item.folder] = groups[item.folder] || []).push(item);
+  }
+  const folders = Object.keys(groups).sort();
+  const total = folders.reduce((n, k) => n + groups[k].length, 0);
+  const folderOptions = ['all', ...Object.keys(textureIndex.byFolder).sort()];
+
+  f.innerHTML = `
+    <h3>Textures (${total} shown, ${textureIndex.all.length} total)</h3>
+    <div class="row" style="margin-bottom: 12px">
+      <input type="text" id="textureSearch" placeholder="Search by name or path…" value="${esc(textureSearch)}" style="flex:1">
+      <select id="textureFolderFilter">
+        ${folderOptions.map(fo => `<option value="${esc(fo)}" ${fo === textureFolderFilter ? 'selected' : ''}>${esc(fo === 'all' ? 'All folders' : fo)} (${(textureIndex.byFolder[fo] || []).length})</option>`).join('')}
+      </select>
+    </div>
+    ${folders.length ? folders.map(fo => `
+      <h4 style="margin:12px 0 6px;font-size:13px">${esc(fo)} <span class="small" style="color:var(--m);font-weight:normal">(${groups[fo].length})</span></h4>
+      <div class="texture-grid">
+        ${groups[fo].map(t => `
+          <div class="texture-tile" data-texpath="${esc(t.path)}" title="${esc(t.path)}">
+            <div class="texture-thumb">
+              <img src="${rawUrl(t.path)}" data-repo-path="${esc(t.path)}" loading="lazy" alt="${esc(t.basename)}" onerror="this.classList.add('broken')">
+            </div>
+            <div class="texture-name">${esc(t.basename)}.${esc(t.ext)}</div>
+          </div>
+        `).join('')}
+      </div>
+    `).join('') : `<p class="note">No textures match the current filter.</p>`}
+  `;
+
+  const searchInput = f.querySelector('#textureSearch');
+  if (searchInput) {
+    searchInput.addEventListener('input', e => {
+      textureSearch = e.target.value;
+      const pos = e.target.selectionStart;
+      drawTextures(f);
+      const s = f.querySelector('#textureSearch');
+      if (s) { s.focus(); s.setSelectionRange(pos, pos); }
+    });
+  }
+  const filterSelect = f.querySelector('#textureFolderFilter');
+  if (filterSelect) {
+    filterSelect.addEventListener('change', e => {
+      textureFolderFilter = e.target.value;
+      drawTextures(f);
+    });
+  }
+}
+
+function drawRaw(f) {
+  if (!S.raw.length) { f.innerHTML = '<p class="note">No unparsed Java files were recorded.</p>'; return; }
+  const { reverse } = buildRelationIndex();
+  f.innerHTML = `<h3>Raw / unparsed files (${S.raw.length})</h3>
+    <p class="note">Click to open in a viewer. Files with a link badge are referenced by a classified entry.</p>
+    <div class="files">${S.raw.map((r, i) => {
+      const refs = reverse[r.path] || [];
+      const linkBadge = refs.length ? `<span class="badge link" title="Referenced by ${refs.length} entry/entries">🔗 ${refs.length}</span>` : '';
+      return `<div data-rawview="${i}">
+        <span class="path" title="${esc(r.path)}">${esc(r.path)}</span>
+        ${linkBadge}
+        <span class="badge raw">${esc(r.reason.slice(0, 40))}${r.reason.length > 40 ? '…' : ''}</span>
+      </div>`;
+    }).join('')}</div>`;
+  f.querySelectorAll('[data-rawview]').forEach(el => {
+    el.addEventListener('click', () => {
+      const r = S.raw[+el.dataset.rawview];
+      showFileModal(r.path);
+    });
+  });
+}
+
+function drawMixins(f) {
+  const all = [...S.mixins, ...S.coremods];
+  if (!all.length) { f.innerHTML = '<p class="note">No Mixin / Coremod candidates detected.</p>'; return; }
+  f.innerHTML = `<h3>Mixin / Coremod candidates (${all.length})</h3>
+    <p class="note">Not reconstructed. Click any row to open in a viewer.</p>
+    <div class="files">${all.map((m, i) => `<div data-mixinview="${i}">
+      <span class="path">${esc(m.path)}</span>
+      <span class="badge raw">${esc(m.note)}</span>
+    </div>`).join('')}</div>`;
+  f.querySelectorAll('[data-mixinview]').forEach(el => {
+    el.addEventListener('click', () => {
+      const m = all[+el.dataset.mixinview];
+      showFileModal(m.path);
+    });
+  });
+}
+
+function drawIEEPs(f) {
+  if (!S.ieeps.length) { f.innerHTML = '<p class="note">No IEEP candidates detected.</p>'; return; }
+  f.innerHTML = `<h3>IEEP candidates (${S.ieeps.length})</h3>
+    <p class="note">Click any row to open in a viewer.</p>
+    <div class="files">${S.ieeps.map((m, i) => `<div data-ieepview="${i}">
+      <span class="path">${esc(m.path)}</span>
+      <span class="badge raw">${esc(m.note)}</span>
+    </div>`).join('')}</div>`;
+  f.querySelectorAll('[data-ieepview]').forEach(el => {
+    el.addEventListener('click', () => {
+      const m = S.ieeps[+el.dataset.ieepview];
+      showFileModal(m.path);
+    });
+  });
+}
+
+function drawExport(f) {
+  const model = JSON.stringify(S, null, 2);
+  f.innerHTML = `<h3>Export model</h3>
+    <p>${fileList.length} files found · ${S.raw.length} raw · ${S.blocks.length + S.tes.length + S.items.length + S.ents.length} structured objects</p>
+    <p><button id="dlModel">⬇ Download model (.json)</button></p>
+    <p class="note">Note: the model JSON does not include the texture index or mcmeta files. Re-explore the repo to restore texture browsing.</p>
+    <h3>Model JSON</h3>
+    <pre>${esc(model)}</pre>`;
+  $('#dlModel').addEventListener('click', () => {
+    log('Export: downloading model JSON');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([model], { type: 'application/json' }));
+    a.download = (S.mod.id || 'gtnh-mod') + '.explorer.json';
+    a.click();
+  });
+}
+
+/* ============================================================
+   LOG / SETTINGS PANELS
+   ============================================================ */
+document.getElementById('logToggle').addEventListener('click', () => {
+  const panel = document.getElementById('logPanel');
+  panel.classList.toggle('open');
+  if (panel.classList.contains('open')) {
+    renderAllLogs();
+    document.getElementById('logToggle').classList.remove('err');
+  }
+});
+document.getElementById('logClose').addEventListener('click', () =>
+  document.getElementById('logPanel').classList.remove('open'));
+document.getElementById('logClear').addEventListener('click', () => {
+  LOGS.length = 0; renderAllLogs(); updateLogButton(); log('Logs cleared.');
+});
+document.getElementById('logCopy').addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(LOGS.map(l => `[${l.t}] ${l.msg}`).join('\n'));
+    log('Logs copied to clipboard.', 'ok');
+  } catch (e) { log('Copy failed: ' + e.message, 'err'); }
+});
+
+function openSettings() {
+  const p = document.getElementById('settingsPanel');
+  document.getElementById('sTheme').value = settings.theme;
+  document.getElementById('sFontSize').value = settings.fontSize;
+  document.getElementById('sFontFamily').value = settings.fontFamily;
+  document.getElementById('sFolds').value = settings.folds;
+  document.getElementById('sMinFold').value = settings.minFoldLines;
+  document.getElementById('sCollapseImports').checked = settings.collapseImports;
+  document.getElementById('sLineNumbers').checked = settings.lineNumbers;
+  document.getElementById('sWordWrap').checked = settings.wordWrap;
+  document.getElementById('sHighlight').checked = settings.highlight;
+  document.getElementById('sAutoFold').checked = settings.autoFold;
+  document.getElementById('sAutoFoldN').value = settings.autoFoldN;
+  renderThemeSwatches();
+  p.hidden = false;
+}
+function closeSettings() { document.getElementById('settingsPanel').hidden = true; }
+function bindSettingsField(id, key, type = 'value') {
+  document.getElementById(id).addEventListener('input', e => {
+    if (type === 'checkbox') settings[key] = e.target.checked;
+    else if (type === 'number') settings[key] = parseFloat(e.target.value) || 0;
+    else settings[key] = e.target.value;
+    saveSettings(); applySettings();
+  });
+}
+bindSettingsField('sTheme', 'theme');
+bindSettingsField('sFontSize', 'fontSize', 'number');
+bindSettingsField('sFontFamily', 'fontFamily');
+bindSettingsField('sFolds', 'folds');
+bindSettingsField('sMinFold', 'minFoldLines', 'number');
+bindSettingsField('sCollapseImports', 'collapseImports', 'checkbox');
+bindSettingsField('sLineNumbers', 'lineNumbers', 'checkbox');
+bindSettingsField('sWordWrap', 'wordWrap', 'checkbox');
+bindSettingsField('sHighlight', 'highlight', 'checkbox');
+bindSettingsField('sAutoFold', 'autoFold', 'checkbox');
+bindSettingsField('sAutoFoldN', 'autoFoldN', 'number');
+document.getElementById('settingsBtn').addEventListener('click', openSettings);
+document.getElementById('settingsClose').addEventListener('click', closeSettings);
+document.getElementById('settingsDone').addEventListener('click', closeSettings);
+document.getElementById('settingsReset').addEventListener('click', () => {
+  Object.assign(settings, SETTINGS_DEFAULTS);
+  saveSettings(); applySettings(); openSettings();
+  log('Settings reset to defaults.');
+});
+document.getElementById('settingsPanel').addEventListener('click', e => {
+  if (e.target.id === 'settingsPanel') closeSettings();
+});
+document.getElementById('fileModalClose').addEventListener('click', () =>
+  document.getElementById('fileModal').hidden = true);
+document.getElementById('fileModal').addEventListener('click', e => {
+  if (e.target.id === 'fileModal') document.getElementById('fileModal').hidden = true;
+});
+document.getElementById('textureModalClose').addEventListener('click', () =>
+  document.getElementById('textureModal').hidden = true);
+document.getElementById('textureModal').addEventListener('click', e => {
+  if (e.target.id === 'textureModal') document.getElementById('textureModal').hidden = true;
+});
+
+/* cached modal buttons */
+document.getElementById('cachedBtn').addEventListener('click', openCachedModal);
+document.getElementById('cachedModalClose').addEventListener('click', closeCachedModal);
+document.getElementById('cachedDone').addEventListener('click', closeCachedModal);
+document.getElementById('cachedModal').addEventListener('click', e => {
+  if (e.target.id === 'cachedModal') closeCachedModal();
+});
+document.getElementById('cachedExport').addEventListener('click', exportCache);
+document.getElementById('cachedImportBtn').addEventListener('click', () =>
+  document.getElementById('importCacheFile').click());
+document.getElementById('cachedClearAll').addEventListener('click', async () => {
+  if (!confirm('Delete ALL cached repositories? This cannot be undone.')) return;
+  try {
+    await dbClear();
+    log('Cleared all cached repos', 'ok');
+    await updateCachedCount();
+    openCachedModal();
+  } catch (e) {
+    log('Clear failed: ' + e.message, 'err');
+  }
+});
+document.getElementById('importCacheFile').addEventListener('change', async e => {
+  const f = e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  await importCache(f);
+});
+
+/* ============================================================
+   SEARCH  (per-category filters + global search)
+   ============================================================ */
+const catSearch = { blocks:'', tes:'', items:'', ents:'', mixins:'', ieeps:'', raw:'' };
+const CAT_NOUN = { blocks:'blocks', tes:'tile entities', items:'items', ents:'entities',
+                   mixins:'mixins / core', ieeps:'IEEP', raw:'raw files' };
+
+function entryHaystack(o) {
+  if (!o) return '';
+  return [o.name, o.className, o.registryName, o.package, o.sourcePath, o.path, o.note]
+    .filter(Boolean).join(' ').toLowerCase();
+}
+function queryTerms(q) { return String(q || '').toLowerCase().split(/\s+/).filter(Boolean); }
+function matchQuery(hay, q) {
+  const terms = queryTerms(q);
+  return terms.every(t => hay.includes(t));
+}
+function hl(text, terms) {
+  const str = String(text ?? '');
+  if (!terms.length) return esc(str);
+  const re = new RegExp('(' + terms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'ig');
+  return str.split(re).map((part, i) => i % 2 ? '<mark class="gs-hl">' + esc(part) + '</mark>' : esc(part)).join('');
+}
+
+/* ----- sidebar search (Blocks / TEs / Items / Entities) ----- */
+function sideSearchHTML(key, total) {
+  const v = catSearch[key] || '';
+  return `<input id="catSearch" class="side-search" type="search" autocomplete="off" spellcheck="false"
+            placeholder="Search ${CAT_NOUN[key] || key}…" value="${esc(v)}">
+          <div id="sideCount" class="side-count">${sideCountText(key, total)}</div>`;
+}
+function sideCountText(key, total) {
+  const q = (catSearch[key] || '').trim();
+  if (!q) return `${total} ${CAT_NOUN[key] || key}`;
+  const n = (S[key] || []).filter(o => matchQuery(entryHaystack(o), q)).length;
+  return `${n} / ${total} match`;
+}
+function bindSidebarSearch(side) {
+  const inp = side.querySelector('#catSearch');
+  if (!inp) return;
+  const key = tab;
+  const refresh = () => {
+    const list = side.querySelector('#sideList');
+    const cnt = side.querySelector('#sideCount');
+    if (list) list.innerHTML = renderSidebarList(S[key]);
+    if (cnt) cnt.textContent = sideCountText(key, S[key].length);
+  };
+  inp.addEventListener('input', () => { catSearch[key] = inp.value; refresh(); });
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      const first = side.querySelector('#sideList [data-sel]');
+      if (first) { sel = +first.dataset.sel; draw(); }
+    } else if (e.key === 'Escape' && inp.value) {
+      inp.value = ''; catSearch[key] = ''; refresh(); e.stopPropagation();
+    }
+  });
+}
+
+/* ----- filter box for Mixins / IEEP / Raw lists ----- */
+function listFilterHTML(key) {
+  return `<div class="list-filter">
+    <input id="listFilter" type="search" autocomplete="off" spellcheck="false"
+           placeholder="Search ${CAT_NOUN[key] || key}…" value="${esc(catSearch[key] || '')}">
+    <span id="listFilterCount" class="side-count"></span>
+  </div>`;
+}
+function bindListFilter(f, key) {
+  const host = f.querySelector('.files');
+  if (!host) return;
+  if (!f.querySelector('#listFilter')) host.insertAdjacentHTML('beforebegin', listFilterHTML(key));
+  const inp = f.querySelector('#listFilter');
+  const cnt = f.querySelector('#listFilterCount');
+  const rows = [...host.children];
+  const apply = () => {
+    const q = (catSearch[key] || '').trim();
+    let n = 0;
+    for (const r of rows) {
+      const ok = !q || matchQuery(r.textContent.toLowerCase(), q);
+      r.style.display = ok ? '' : 'none';
+      if (ok) n++;
+    }
+    cnt.textContent = q ? `${n} / ${rows.length} match` : `${rows.length} total`;
+  };
+  inp.addEventListener('input', () => { catSearch[key] = inp.value; apply(); });
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && inp.value) { inp.value = ''; catSearch[key] = ''; apply(); e.stopPropagation(); }
+  });
+  apply();
+}
+
+/* ----- global search ----- */
+const GS_LIMIT = 8;
+let gsFlat = [];
+let gsActive = -1;
+let gsTimer = null;
+
+function gsScore(label, terms) {
+  const l = label.toLowerCase();
+  const q = terms.join(' ');
+  if (l === q) return 0;
+  if (l.startsWith(q)) return 1;
+  if (l.includes(q)) return 2;
+  return 3;
+}
+function gsCollect(q) {
+  const terms = queryTerms(q);
+  const groups = [];
+  const rank = (arr) => arr.sort((a, b) => a.score - b.score || a.label.localeCompare(b.label, undefined, { sensitivity:'base', numeric:true }));
+
+  for (const kind of ['blocks', 'tes', 'items', 'ents']) {
+    const hits = [];
+    (S[kind] || []).forEach((o, i) => {
+      if (!matchQuery(entryHaystack(o), q)) return;
+      const label = labelOf(o);
+      hits.push({ kind, index: i, label, score: gsScore(label, terms),
+                  sub: (o.sourcePath || '').replace(/^src\/main\/java\//, '') });
+    });
+    if (hits.length) groups.push({ kind, title: TABS[kind], total: hits.length, hits: rank(hits) });
+  }
+
+  const pathKinds = [
+    ['mixins', [...(S.mixins || []), ...(S.coremods || [])]],
+    ['ieeps',  S.ieeps || []],
+    ['raw',    S.raw || []],
+  ];
+  for (const [kind, arr] of pathKinds) {
+    const hits = [];
+    const seen = new Set();
+    for (const o of arr) {
+      if (!o.path || seen.has(o.path)) continue;
+      seen.add(o.path);
+      if (!matchQuery(entryHaystack(o), q)) continue;
+      const label = o.path.split('/').pop();
+      hits.push({ kind, path: o.path, label, score: gsScore(label, terms),
+                  sub: o.path.replace(/^src\/main\/java\//, '') });
+    }
+    if (hits.length) groups.push({ kind, title: TABS[kind], total: hits.length, hits: rank(hits) });
+  }
+
+  if (textureIndex && textureIndex.all.length) {
+    const hits = [];
+    for (const t of textureIndex.all) {
+      if (!matchQuery(t.path.toLowerCase(), q)) continue;
+      const label = t.basename + '.' + t.ext;
+      hits.push({ kind:'textures', path: t.path, label, score: gsScore(t.basename, terms),
+                  sub: t.folder + '/' + t.subpath });
+    }
+    if (hits.length) groups.push({ kind:'textures', title: TABS.textures, total: hits.length, hits: rank(hits) });
+  }
+  return { groups, terms };
+}
+function gsRender(q) {
+  const box = document.getElementById('gsResults');
+  const { groups, terms } = gsCollect(q);
+  gsFlat = []; gsActive = -1;
+  if (!groups.length) {
+    box.innerHTML = `<div class="gs-empty">No results for “${esc(q)}”.</div>`;
+    box.classList.add('open');
+    return;
+  }
+  let h = '';
+  for (const g of groups) {
+    h += `<div class="gs-group">${esc(g.title)} · ${g.total}</div>`;
+    for (const r of g.hits.slice(0, GS_LIMIT)) {
+      const idx = gsFlat.push(r) - 1;
+      const thumb = r.kind === 'textures'
+        ? `<img class="gs-thumb" loading="lazy" src="${esc(rawUrl(r.path))}" data-repo-path="${esc(r.path)}" alt="" onerror="this.style.opacity=.25">` : '';
+      h += `<div class="gs-item" role="option" data-gsi="${idx}">${thumb}
+        <div class="gs-main"><div class="gs-label">${hl(r.label, terms)}</div>
+        ${r.sub ? `<div class="gs-sub">${hl(r.sub, terms)}</div>` : ''}</div></div>`;
+    }
+    if (g.total > GS_LIMIT) {
+      const idx = gsFlat.push({ kind:'more', target:g.kind, query:q }) - 1;
+      h += `<div class="gs-item gs-more" data-gsi="${idx}">See all ${g.total} in ${esc(g.title)} →</div>`;
+    }
+  }
+  box.innerHTML = h;
+  box.classList.add('open');
+  gsSetActive(0);
+}
+function gsSetActive(i) {
+  const box = document.getElementById('gsResults');
+  if (!gsFlat.length) { gsActive = -1; return; }
+  gsActive = (i + gsFlat.length) % gsFlat.length;
+  box.querySelectorAll('.gs-item.active').forEach(el => el.classList.remove('active'));
+  const el = box.querySelector(`[data-gsi="${gsActive}"]`);
+  if (el) { el.classList.add('active'); el.scrollIntoView({ block:'nearest' }); }
+}
+function gsClose() {
+  document.getElementById('gsResults').classList.remove('open');
+  gsActive = -1;
+}
+function gsActivate(r) {
+  if (!r) return;
+  gsClose();
+  if (r.kind === 'more') {
+    if (r.target === 'textures') { textureSearch = r.query; textureFolderFilter = 'all'; }
+    else catSearch[r.target] = r.query;
+    tab = r.target; sel = 0; draw();
+    return;
+  }
+  if (r.kind === 'textures') { openTextureModal(r.path); return; }
+  if (['blocks', 'tes', 'items', 'ents'].includes(r.kind)) {
+    catSearch[r.kind] = '';
+    tab = r.kind; sel = r.index; draw();
+    const b = document.querySelector(`#side [data-sel="${sel}"]`);
+    if (b) b.scrollIntoView({ block:'nearest' });
+    return;
+  }
+  showFileModal(r.path);
+}
+(function initGlobalSearch() {
+  const inp = document.getElementById('globalSearch');
+  const box = document.getElementById('gsResults');
+  const hint = document.getElementById('gsHint');
+  const run = () => {
+    const q = inp.value.trim();
+    if (!q) { gsClose(); return; }
+    gsRender(q);
+  };
+  inp.addEventListener('input', () => { clearTimeout(gsTimer); gsTimer = setTimeout(run, 90); });
+  inp.addEventListener('focus', () => { hint.style.display = 'none'; if (inp.value.trim()) run(); });
+  inp.addEventListener('blur', () => { hint.style.display = inp.value ? 'none' : ''; });
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); if (!box.classList.contains('open')) run(); else gsSetActive(gsActive + 1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); gsSetActive(gsActive - 1); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (gsFlat[gsActive]) gsActivate(gsFlat[gsActive]); }
+    else if (e.key === 'Escape') {
+      if (box.classList.contains('open')) gsClose(); else { inp.value = ''; inp.blur(); }
+      e.stopPropagation();
+    }
+  });
+  box.addEventListener('mousedown', e => {
+    const el = e.target.closest('[data-gsi]');
+    if (!el) return;
+    e.preventDefault();
+    gsActivate(gsFlat[+el.dataset.gsi]);
+  });
+  box.addEventListener('mousemove', e => {
+    const el = e.target.closest('[data-gsi]');
+    if (el && +el.dataset.gsi !== gsActive) gsSetActive(+el.dataset.gsi);
+  });
+  document.addEventListener('mousedown', e => {
+    if (!document.getElementById('gsWrap').contains(e.target)) gsClose();
+  });
+  document.addEventListener('keydown', e => {
+    const tag = (document.activeElement && document.activeElement.tagName) || '';
+    const typing = /INPUT|TEXTAREA|SELECT/.test(tag) || (document.activeElement && document.activeElement.isContentEditable);
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault(); inp.focus(); inp.select();
+    } else if (e.key === '/' && !typing && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault(); inp.focus(); inp.select();
+    }
+  });
+})();
+
+/* ============================================================
+   GO TO DEFINITION
+   ============================================================ */
+const fileNav = { stack: [], cur: null };
+const JAVA_STMT_WORDS = new Set(['return','new','throw','else','case','assert','import','package','goto','do','yield','instanceof','extends','implements']);
+const JAVA_MODIFIERS = new Set(['public','protected','private','static','final','abstract','synchronized','native','default','transient','volatile','strictfp']);
+let _fileSet = null, _fileSetFor = null;
+function fileSet() { if (_fileSetFor !== fileList) { _fileSet = new Set(fileList); _fileSetFor = fileList; } return _fileSet; }
+const escRe = s => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const baseName = p => p.split('/').pop().replace(/\.java$/, '');
+const badType = t => !t || JAVA_STMT_WORDS.has(t) || JAVA_MODIFIERS.has(t);
+function cleanType(t) {
+  if (!t) return null;
+  let x = t.replace(/<[^<>]*(?:<[^<>]*>[^<>]*)*>/g, '').replace(/\[\]|\.\.\./g, '').trim();
+  x = x.split('.').pop();
+  return (!x || x === 'var') ? null : x;
+}
+function commonPrefixLen(a, b) { let i = 0; while (i < a.length && i < b.length && a[i] === b[i]) i++; return i; }
+
+function updateBackBtn() {
+  const b = document.getElementById('fileModalBack');
+  if (b) b.style.display = fileNav.stack.length ? '' : 'none';
+}
+function fileModalBack() {
+  const prev = fileNav.stack.pop();
+  if (!prev) return;
+  showFileModal(prev.path, { line: prev.line, back: true });
+}
+
+function findDeclarations(txt, name) {
+  const N = escRe(name);
+  const mods = '(?:(?:public|protected|private|static|final|abstract|synchronized|native|default|transient|volatile|strictfp)\\s+)*';
+  const ann = '(?:@\\w+(?:\\([^)]*\\))?\\s+)*';
+  const T = '([\\w.$]+(?:<[^;(){}=]*>)?(?:\\[\\])*)';
+  const reClass  = new RegExp('^\\s*' + ann + mods + '(?:class|interface|enum|@interface)\\s+' + N + '\\b');
+  const reMethod = new RegExp('^\\s*' + ann + mods + '(?:<[^>]+>\\s+)?' + T + '\\s+' + N + '\\s*\\(');
+  const reCtor   = new RegExp('^\\s*' + ann + mods + N + '\\s*\\(');
+  const reField  = new RegExp('^\\s*' + ann + mods + T + '\\s+(?:[\\w$]+\\s*(?:=[^,;]*)?,\\s*)*' + N + '\\s*(?:=|;|,)');
+  const out = [];
+  const lines = txt.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const ln = lines[i];
+    if (!ln.includes(name)) continue;
+    const t = ln.trim();
+    if (!t || t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) continue;
+    let m;
+    if (reClass.test(ln)) out.push({ line: i + 1, kind: 'class', text: t });
+    else if ((m = ln.match(reMethod)) && !badType(m[1])) out.push({ line: i + 1, kind: 'method', text: t, type: m[1] });
+    else if (/^[A-Z]/.test(name) && reCtor.test(ln) && !t.endsWith(';')) out.push({ line: i + 1, kind: 'constructor', text: t });
+    else if ((m = ln.match(reField)) && !badType(m[1])) out.push({ line: i + 1, kind: 'field', text: t, type: m[1] });
+  }
+  return out;
+}
+function findLocalDecl(lines, name, lineNo) {
+  const N = escRe(name);
+  const reLocal = new RegExp('^\\s*(?:for\\s*\\(\\s*)?(?:final\\s+)?([\\w.$]+(?:<[^;(){}=]*>)?(?:\\[\\])*)\\s+(?:[\\w$]+\\s*(?:=[^,;]*)?,\\s*)*' + N + '\\s*(?:=|;|,|:)');
+  const reParam = new RegExp('[(,]\\s*(?:final\\s+)?(?:@\\w+\\s+)?([\\w.$]+(?:<[^()]*>)?(?:\\[\\])*(?:\\.\\.\\.)?)\\s+' + N + '\\s*(?=[,)])');
+  for (let i = Math.min(lineNo, lines.length) - 1; i >= 0; i--) {
+    const ln = lines[i];
+    if (!ln.includes(name)) continue;
+    const t = ln.trim();
+    if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) continue;
+    let m = ln.match(reLocal);
+    if (m && !badType(m[1])) return { line: i + 1, kind: 'variable', text: t, type: m[1] };
+    m = ln.match(reParam);
+    if (m && !badType(m[1])) return { line: i + 1, kind: 'parameter', text: t, type: m[1] };
+  }
+  return null;
+}
+function superNames(txt, cls) {
+  const m = txt.match(new RegExp('\\b(?:class|interface|enum)\\s+' + escRe(cls) + '\\b[^{]*\\{'));
+  if (!m) return [];
+  const head = m[0].replace(/<[^<>]*(?:<[^<>]*>[^<>]*)*>/g, '');
+  const out = [];
+  const ex = head.match(/\bextends\s+([^{]*?)(?:\bimplements\b|\{)/);
+  const im = head.match(/\bimplements\s+([^{]*)\{/);
+  for (const part of [ex && ex[1], im && im[1]]) {
+    if (!part) continue;
+    for (const n of part.split(',')) { const nm = n.trim().split('.').pop(); if (nm) out.push(nm); }
+  }
+  return out;
+}
+function resolveClassPath(name, fromPath, txt) {
+  txt = txt || files[fromPath] || '';
+  const imps = extractImports(txt);
+  for (const imp of imps) if (imp.endsWith('.' + name) && fqnIndex[imp]) return fqnIndex[imp];
+  const dir = fromPath.slice(0, fromPath.lastIndexOf('/') + 1);
+  if (fileSet().has(dir + name + '.java')) return dir + name + '.java';
+  for (const imp of imps) if (imp.endsWith('.*')) { const p = fqnIndex[imp.slice(0, -1) + name]; if (p) return p; }
+  const c = basenameIndex[name];
+  if (c && c.length) return c.slice().sort((a, b) => commonPrefixLen(b, fromPath) - commonPrefixLen(a, fromPath))[0];
+  return null;
+}
+function resolveType(typeName, fromPath, txt) {
+  if (findDeclarations(txt, typeName).some(d => d.kind === 'class')) return fromPath;
+  return resolveClassPath(typeName, fromPath, txt);
+}
+async function findClass(name, fromPath, txt) {
+  const local = findDeclarations(txt, name).filter(d => d.kind === 'class');
+  if (local.length) return local.map(d => ({ ...d, path: fromPath }));
+  const p = resolveClassPath(name, fromPath, txt);
+  if (!p) return [];
+  const t = await ensureSourceLoaded(p);
+  const d = t ? findDeclarations(t, name).find(x => x.kind === 'class') : null;
+  return [{ path: p, line: d ? d.line : 1, kind: 'class', text: d ? d.text : name }];
+}
+async function findMember(path, name, depth = 0, seen = new Set()) {
+  if (seen.has(path) || depth > 6) return [];
+  seen.add(path);
+  const txt = await ensureSourceLoaded(path);
+  if (txt == null) return [];
+  const decls = findDeclarations(txt, name);
+  if (decls.length) return decls.map(d => ({ ...d, path }));
+  for (const sup of superNames(txt, baseName(path))) {
+    const sp = resolveType(sup, path, txt);
+    if (!sp) continue;
+    const r = await findMember(sp, name, depth + 1, seen);
+    if (r.length) return r;
+  }
+  return [];
+}
+function declTypeOf(lines, txt, varName, lineNo) {
+  const l = findLocalDecl(lines, varName, lineNo);
+  if (l) return cleanType(l.type);
+  const f = findDeclarations(txt, varName).find(d => d.kind === 'field');
+  return f ? cleanType(f.type) : null;
+}
+async function searchWider(name, fromPath, txt) {
+  const out = [];
+  const push = (p, t) => { for (const d of findDeclarations(t, name)) if (d.kind !== 'constructor') out.push({ ...d, path: p }); };
+  const imported = [...new Set(extractImports(txt).map(i => fqnIndex[i]).filter(Boolean))].slice(0, 25);
+  await Promise.all(imported.map(p => ensureSourceLoaded(p)));
+  for (const p of imported) if (typeof files[p] === 'string') push(p, files[p]);
+  if (out.length) return out;
+  for (const [p, t] of Object.entries(files)) {
+    if (p === fromPath || !p.endsWith('.java') || typeof t !== 'string') continue;
+    push(p, t);
+    if (out.length >= 20) break;
+  }
+  return out;
+}
+function prefixBefore(span) {
+  const c = span.closest('.code-content');
+  if (!c) return '';
+  const r = document.createRange();
+  r.selectNodeContents(c);
+  r.setEndBefore(span);
+  return r.toString();
+}
+async function resolveSymbol(span, viewer) {
+  const name = span.textContent;
+  const fromPath = viewer.dataset.srcPath;
+  const txt = (await ensureSourceLoaded(fromPath)) || '';
+  const lines = txt.split('\n');
+  const c = span.closest('.code-content');
+  const lineNo = c ? (+c.dataset.ln || 1) : 1;
+  const prefix = prefixBefore(span);
+  const isCall = span.classList.contains('tok-function');
+  const looksConst = /^[A-Z][A-Z0-9_]+$/.test(name);
+  const isClassTok = span.classList.contains('tok-type') && !looksConst;
+  const q = (prefix.match(/([A-Za-z_$][\w$]*)\s*\.\s*$/) || [])[1];
+  let res = [];
+
+  if (q) {
+    let owner = null;
+    if (q === 'this') owner = fromPath;
+    else if (q === 'super') { const sn = superNames(txt, baseName(fromPath))[0]; owner = sn ? resolveType(sn, fromPath, txt) : null; }
+    else if (/^[A-Z]/.test(q)) owner = resolveType(q, fromPath, txt);
+    else { const t = declTypeOf(lines, txt, q, lineNo); if (t) owner = resolveType(t, fromPath, txt); }
+    if (owner) res = await findMember(owner, name);
+  }
+  if (!res.length && isClassTok) res = await findClass(name, fromPath, txt);
+  if (!res.length && !isClassTok) {
+    if (!isCall) {
+      const l = findLocalDecl(lines, name, lineNo);
+      if (l) res = [{ ...l, path: fromPath }];
+    }
+    if (!res.length) res = await findMember(fromPath, name);
+  }
+  if (!res.length && /^[A-Z]/.test(name)) res = await findClass(name, fromPath, txt);
+  if (!res.length) res = await searchWider(name, fromPath, txt);
+  return res;
+}
+
+function gotoLine(viewer, line) {
+  if (!viewer || !line) return;
+  const body = viewer.querySelector('.code-viewer-body');
+  if (!body) return;
+  const el = body.querySelector(`[data-ln="${line}"]`);
+  if (!el) return;
+  let r = el.closest('.code-region');
+  if (el.closest('.code-region-head')) r = (r && r.parentElement) ? r.parentElement.closest('.code-region') : null;
+  while (r) { r.classList.remove('folded'); r = r.parentElement ? r.parentElement.closest('.code-region') : null; }
+  body.querySelectorAll('.target-line').forEach(x => x.classList.remove('target-line', 'flash'));
+  el.classList.add('target-line');
+  el.scrollIntoView({ block: 'center' });
+  void el.offsetWidth;
+  el.classList.add('flash');
+}
+function navigateTo(viewer, target, fromLine) {
+  const inModal = !!viewer.closest('#fileModal');
+  if (target.path === viewer.dataset.srcPath) {
+    if (inModal) {
+      fileNav.stack.push({ path: target.path, line: fromLine });
+      fileNav.cur = { path: target.path, line: target.line };
+      updateBackBtn();
+    }
+    gotoLine(viewer, target.line);
+  } else {
+    if (inModal && fileNav.cur) fileNav.cur.line = fromLine;
+    showFileModal(target.path, { line: target.line });
+  }
+}
+let _toastTimer = null;
+function symToast(msg, ms = 3000) {
+  let el = document.getElementById('symToast');
+  if (!el) { el = document.createElement('div'); el.id = 'symToast'; document.body.appendChild(el); }
+  clearTimeout(_toastTimer);
+  el.textContent = msg;
+  el.classList.add('show');
+  if (ms) _toastTimer = setTimeout(() => el.classList.remove('show'), ms);
+}
+function hideSymToast() { const el = document.getElementById('symToast'); if (el) el.classList.remove('show'); }
+function hideSymPicker() { const el = document.getElementById('symPicker'); if (el) el.classList.remove('show'); }
+function showSymPicker(name, results, x, y, onPick) {
+  let el = document.getElementById('symPicker');
+  if (!el) { el = document.createElement('div'); el.id = 'symPicker'; document.body.appendChild(el); }
+  el.innerHTML = `<div class="sym-pick-title">${results.length} definitions of “${esc(name)}”</div>` +
+    results.map((r, i) => `<div class="sym-opt" data-i="${i}">
+      <div class="sym-opt-h">${esc(r.path.split('/').pop())}:${r.line} <span class="badge">${esc(r.kind)}</span></div>
+      <div class="sym-opt-t">${esc(r.text)}</div></div>`).join('');
+  el.classList.add('show');
+  const w = el.offsetWidth, h = el.offsetHeight;
+  el.style.left = Math.max(8, Math.min(x, window.innerWidth - w - 8)) + 'px';
+  el.style.top  = Math.max(8, Math.min(y + 8, window.innerHeight - h - 8)) + 'px';
+  el.onmousedown = ev => {
+    const o = ev.target.closest('[data-i]');
+    if (!o) return;
+    ev.preventDefault();
+    hideSymPicker();
+    onPick(results[+o.dataset.i]);
+  };
+}
+
+document.addEventListener('click', async e => {
+  const span = e.target.closest && e.target.closest('.code-viewer-body .sym');
+  if (!span) return;
+  const selection = window.getSelection && window.getSelection();
+  if (selection && !selection.isCollapsed) return;
+  e.stopImmediatePropagation();
+  e.preventDefault();
+  hideSymPicker();
+  const viewer = span.closest('.code-viewer');
+  const fromPath = viewer.dataset.srcPath;
+  const c = span.closest('.code-content');
+  const fromLine = c ? (+c.dataset.ln || 0) : 0;
+  const name = span.textContent;
+  symToast(`Looking up ${name}…`, 0);
+  let res;
+  try { res = await resolveSymbol(span, viewer); }
+  catch (err) { log('Definition lookup failed: ' + (err.stack || err.message), 'err'); symToast('Lookup failed: ' + err.message); return; }
+  hideSymToast();
+  const cands = res.filter(r => !(r.path === fromPath && r.line === fromLine));
+  if (!cands.length) {
+    symToast(res.length ? `“${name}” is declared right here.`
+                        : `No definition found for “${name}” — it is probably from Java, Minecraft or Forge.`);
+    return;
+  }
+  if (cands.length === 1) navigateTo(viewer, cands[0], fromLine);
+  else showSymPicker(name, cands, e.clientX, e.clientY, r => navigateTo(viewer, r, fromLine));
+}, true);
+
+document.addEventListener('mousedown', e => {
+  const pk = document.getElementById('symPicker');
+  if (pk && pk.classList.contains('show') && !pk.contains(e.target)) hideSymPicker();
+});
+document.addEventListener('keydown', e => {
+  const modal = document.getElementById('fileModal');
+  const modalOpen = modal && !modal.hidden;
+  if (e.key === 'Escape') {
+    const tm = document.getElementById('textureModal');
+    if (tm && !tm.hidden) { tm.hidden = true; return; }
+    const pk = document.getElementById('symPicker');
+    if (pk && pk.classList.contains('show')) { hideSymPicker(); return; }
+    if (modalOpen) modal.hidden = true;
+  } else if (e.altKey && e.key === 'ArrowLeft' && modalOpen) {
+    e.preventDefault(); fileModalBack();
+  }
+});
+document.getElementById('fileModalBack').addEventListener('click', fileModalBack);
+
+/* ============================================================
+   EVENTS
+   ============================================================ */
+document.addEventListener('click', e => {
+  const t = e.target;
+  if (t.id === 'exploreBtn') { explore(); return; }
+
+  if (t.dataset && t.dataset.cachedload) {
+    loadFromCache(t.dataset.cachedload);
+    return;
+  }
+  if (t.dataset && t.dataset.cacheddelete) {
+    (async () => {
+      try {
+        await dbDelete(t.dataset.cacheddelete);
+        log(`Deleted cache: ${t.dataset.cacheddelete}`);
+        await updateCachedCount();
+        openCachedModal();
+      } catch (err) { log('Delete failed: ' + err.message, 'err'); }
+    })();
+    return;
+  }
+  if (t.dataset && t.dataset.cachedrefresh) {
+    (async () => {
+      try {
+        const rec = await dbGet(t.dataset.cachedrefresh);
+        if (!rec) return;
+        $('#repoUrl').value = `https://github.com/${rec.meta.owner}/${rec.meta.repo}/tree/${rec.meta.branch}`;
+        closeCachedModal();
+        explore();
+      } catch (err) { log('Refresh failed: ' + err.message, 'err'); }
+    })();
+    return;
+  }
+
+  const texTile = t.closest('[data-texpath]');
+  if (texTile) { openTextureModal(texTile.dataset.texpath); return; }
+
+  const chip = t.closest('[data-relatedpath]');
+  if (chip) { showFileModal(chip.dataset.relatedpath); return; }
+
+  if (t.dataset && t.dataset.sortmode) {
+    sidebarSort = t.dataset.sortmode;
+    saveSidebarSort();
+    draw();
+    return;
+  }
+
+  if (t.dataset && t.dataset.act === 'browseTextures') {
+    tab = 'textures';
+    sel = 0;
+    draw();
+    return;
+  }
+
+  if (t.dataset && t.dataset.tab) { tab = t.dataset.tab; sel = 0; draw(); return; }
+  if (t.dataset && t.dataset.sel) { sel = +t.dataset.sel; draw(); return; }
+
+  if (t.dataset && t.dataset.act) {
+    const act = t.dataset.act;
+    if (act === 'del') {
+      if (Array.isArray(S[tab]) && S[tab][sel]) {
+        const removed = S[tab][sel];
+        log(`Deleted: ${removed.name || removed.className} from ${TABS[tab]}`);
+        if (removed.sourcePath) textureCache.delete(removed.sourcePath);
+        S[tab].splice(sel, 1); sel = Math.max(0, sel - 1);
+        relationIndex = null;
+        draw();
+      }
+    } else if (act === 'copySrc') {
+      const v = t.closest('.code-viewer');
+      const path = v && v.dataset.srcPath;
+      if (path) {
+        const txt = files[path] || '';
+        navigator.clipboard.writeText(txt)
+          .then(() => log('Source copied.', 'ok'))
+          .catch(err => log('Copy failed: ' + err.message, 'err'));
+      }
+    } else if (act === 'refreshSrc') {
+      const v = t.closest('.code-viewer');
+      const path = v && v.dataset.srcPath;
+      if (path) { delete files[path]; loadSourceIntoViewer(v); log(`Refreshed source: ${path}`); }
+    } else if (act === 'foldAll') {
+      const v = t.closest('.code-viewer');
+      if (v) v.querySelectorAll('.code-region').forEach(r => r.classList.add('folded'));
+    } else if (act === 'unfoldAll') {
+      const v = t.closest('.code-viewer');
+      if (v) v.querySelectorAll('.code-region').forEach(r => r.classList.remove('folded'));
+    }
+    return;
+  }
+
+  const head = t.closest('.code-region-head');
+  if (head) {
+    const region = head.closest('.code-region');
+    if (region) region.classList.toggle('folded');
+    return;
+  }
+
+  if (t.id === 'saveBtn') {
+    log('Save: downloading model JSON');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' }));
+    a.download = (S.mod.id || 'gtnh-mod') + '.explorer.json';
+    a.click();
+    return;
+  }
+  if (t.id === 'openBtn') { $('#openFile').click(); return; }
+});
+
+document.addEventListener('change', async e => {
+  if (e.target.id !== 'openFile' || !e.target.files[0]) return;
+  const f = e.target.files[0]; e.target.value = '';
+  try {
+    const d = JSON.parse(await f.text());
+    if (d.mod && Array.isArray(d.blocks)) {
+      S = d;
+      relationIndex = null;
+      textureCache.clear();
+      setStatus('Model loaded. (Re-explore to load textures.)', 'warn');
+      log(`Model loaded from file: ${f.name} — textures require re-explore`, 'warn');
+      draw();
+    } else throw new Error('Not a GTNH Mod Explorer model');
+  } catch (err) {
+    setStatus('Could not open model: ' + err.message, 'err');
+    log('Open model failed: ' + err.message, 'err');
+  }
+});
+
+/* ============================================================
+   INIT
+   ============================================================ */
+loadSettings();
+loadSidebarSort();
+applySettings();
+updateCachedCount();
+log('GTNH Mod Explorer ready.', 'ok');
+if (!dbSupported) log('IndexedDB unavailable — caching disabled.', 'warn');
+draw();
+</script>
+<script>
+/* Disclaimer gate: the rest of the page is inert until the user acknowledges. */
+(function () {
+  const d = document.getElementById('disclaimer');
+  const ok = document.getElementById('disclaimerOk');
+  if (!d || !ok) return;
+  const others = [...document.body.children].filter(el => el !== d && el.tagName !== 'SCRIPT');
+  others.forEach(el => { el.inert = true; });
+  ok.addEventListener('click', () => {
+    others.forEach(el => { el.inert = false; });
+    d.remove();
+  });
+  ok.focus();
+})();
+</script>
+</body>
+</html>
