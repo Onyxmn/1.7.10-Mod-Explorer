@@ -429,6 +429,19 @@
     #textureModalPath { width: 100%; word-break: break-all; text-align: center; }
     #textureModalMeta { display: flex; gap: 8px; width: 100%; justify-content: center; }
 
+    /* deep-link modal */
+    #deepLinkModal .modal { max-width: 560px; border-color: var(--warn); }
+    #deepLinkModal .modal-header { border-bottom-color: var(--warn); }
+    #deepLinkModal .field-label { color: var(--m); font-size: 11px; margin-bottom: 3px;
+      text-transform: uppercase; letter-spacing: .04em; }
+    #deepLinkModal .field-value { font-family: ui-monospace, monospace; font-size: 12px;
+      background: var(--pre-bg); border: 1px solid var(--b); border-radius: 4px;
+      padding: 6px 8px; word-break: break-all; margin-bottom: 12px; }
+    #deepLinkModal .warning-row { display: flex; gap: 8px; align-items: flex-start;
+      padding: 8px 10px; background: rgba(245,194,107,.1); border: 1px solid var(--warn);
+      border-radius: 6px; margin: 4px 0 14px; font-size: 12px; color: var(--t); }
+    #deepLinkModal .warning-row .icon { font-size: 16px; line-height: 1.2; flex-shrink: 0; }
+
     /* cached repos modal */
     #cachedModal .modal { max-width: 780px; }
     #cachedModalBody { padding: 10px 14px; }
@@ -454,7 +467,7 @@
 <div id="disclaimer" role="alertdialog" aria-modal="true" aria-labelledby="disclaimerText">
   <div class="box">
     <div class="icon">⚠️</div>
-    <p id="disclaimerText">This is SLOP.  It was made entirely by LLMs. DO NOT TRUST IT WITH IMPORTANT STUFF.</p>
+    <p id="disclaimerText">This is SLOP.  It was made entirely by LLMs. DO NOT TRUST IT.</p>
     <button id="disclaimerOk" type="button">I understand</button>
   </div>
 </div>
@@ -475,6 +488,7 @@
     <button id="saveBtn">💾 Save</button>
     <button id="openBtn">📂 Open</button>
     <button id="settingsBtn" title="Settings">⚙ Settings</button>
+    <button id="shareBtn" title="Copy a link to this view">🔗</button>
     <input id="openFile" type="file" accept=".json" hidden>
     <input id="importCacheFile" type="file" accept=".json" hidden>
   </span>
@@ -608,6 +622,7 @@
       <button id="fileModalBack" style="display:none;padding:3px 10px;font-size:12px" title="Back (Alt+←)">← Back</button>
       <b id="fileModalTitle" style="font-family:ui-monospace,monospace;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></b>
       <button id="fileModalGoto" style="display:none;padding:3px 10px;font-size:12px">Go to entry →</button>
+      <button id="fileModalShare" style="padding:3px 10px;font-size:12px" title="Copy link to this file">🔗</button>
       <button id="fileModalClose" style="padding:3px 10px">✕</button>
     </div>
     <div class="modal-body">
@@ -621,6 +636,7 @@
   <div class="modal">
     <div class="modal-header">
       <b id="textureModalTitle"></b>
+      <button id="textureModalShare" style="padding:3px 10px" title="Copy link to this texture">🔗</button>
       <button id="textureModalClose" style="padding:3px 10px">✕</button>
     </div>
     <div class="modal-body" id="textureModalBody">
@@ -658,6 +674,34 @@
         <button id="textureModalCopyUrl">📋 Copy URL</button>
         <button id="textureModalCopyPath">📋 Copy path</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<div id="deepLinkModal" class="modal-overlay" hidden>
+  <div class="modal">
+    <div class="modal-header">
+      <b>📦 Repository not cached</b>
+      <button id="deepLinkModalClose" style="padding:2px 10px;">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="warning-row">
+        <span class="icon">⚠️</span>
+        <span>This link points to a repository that isn't in your local cache yet. Nothing has been downloaded.</span>
+      </div>
+      <div class="field-label">Repository</div>
+      <div id="deepLinkRepoName" class="field-value"></div>
+      <div class="field-label">The link is trying to open</div>
+      <div id="deepLinkTarget" class="field-value"></div>
+      <p class="note" style="margin-bottom:0">
+        Downloading will make GitHub API requests to list the repo tree and fetch the source files and animation metadata.
+        After it finishes, the link's target will open automatically. This is the only time a network request happens —
+        everything else reads from the cache.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button id="deepLinkCancel">Cancel</button>
+      <button id="deepLinkDownload" class="on">⬇ Download &amp; open</button>
     </div>
   </div>
 </div>
@@ -1121,6 +1165,15 @@ let textureFolderFilter = 'all';
 let texZoomMode = 'fit';
 let texNaturalW = 16, texNaturalH = 16;
 
+/* deep-link state */
+let fileModalPath = null;
+let fileModalLine = 0;
+let texModalPath = null;
+let _applyingDeepLink = false;
+let _updatingHash = false;
+let _dismissedDeepLinkHash = '';
+let _deepLinkPending = null;
+
 function emptyModel() {
   return {
     mod: { name:'', id:'', pkg:'', ver:'', author:'', desc:'', deps:[] },
@@ -1135,6 +1188,130 @@ const TABS = {
   mixins:'Mixins / Core', ieeps:'IEEP',
   raw:'Raw / Unparsed', export:'Export'
 };
+
+/* ============================================================
+   DEEP LINK (hash-based routing)
+   ============================================================ */
+function buildHash(opts) {
+  const parts = [];
+  if (repoMeta.owner) parts.push(`repo=${repoMeta.owner}/${repoMeta.repo}@${repoMeta.branch}`);
+  if (opts.file) {
+    parts.push(`file=${opts.file}`);
+    if (opts.line) parts.push(`line=${opts.line}`);
+  } else if (opts.tex) {
+    parts.push(`tex=${opts.tex}`);
+    if (opts.zoom && opts.zoom !== 'fit') parts.push(`zoom=${opts.zoom}`);
+  } else if (opts.tab) {
+    parts.push(`tab=${opts.tab}`);
+    if (opts.sel) parts.push(`sel=${opts.sel}`);
+  }
+  return parts.length ? '#' + parts.join('&') : '';
+}
+function parseHash() {
+  const h = location.hash.slice(1);
+  if (!h) return {};
+  const out = {};
+  for (const part of h.split('&')) {
+    const i = part.indexOf('=');
+    if (i < 0) continue;
+    out[part.slice(0, i)] = part.slice(i + 1);
+  }
+  return out;
+}
+function updateHash(opts) {
+  const newHash = buildHash(opts);
+  if (location.hash === newHash) return;
+  _updatingHash = true;
+  try {
+    history.replaceState(null, '', newHash);
+    _updatingHash = false;
+  } catch (e) {
+    try { location.hash = newHash; } catch (e2) {}
+    setTimeout(() => { _updatingHash = false; }, 0);
+  }
+}
+function syncHash() {
+  if (_applyingDeepLink) return;
+  if (!repoMeta.owner) return;
+  let opts;
+  if (texModalPath) opts = { tex: texModalPath, zoom: texZoomMode };
+  else if (fileModalPath) opts = { file: fileModalPath, line: fileModalLine };
+  else if (tab === 'overview') opts = {};
+  else if (SIDEBAR_LIST_TABS.includes(tab)) opts = { tab, sel };
+  else opts = { tab };
+  updateHash(opts);
+}
+async function applyHash() {
+  if (_applyingDeepLink) return;
+  const h = parseHash();
+  if (!h.repo) return;
+  const m = h.repo.match(/^([^/]+)\/([^@]+)(?:@(.+))?$/);
+  if (!m) {
+    log(`Deep link: could not parse repo "${h.repo}"`, 'warn');
+    return;
+  }
+  const [, owner, repo, branch = 'master'] = m;
+  const key = `${owner}/${repo}@${branch}`;
+  const sameRepo = repoMeta.owner === owner && repoMeta.repo === repo && repoMeta.branch === branch;
+
+  _applyingDeepLink = true;
+  try {
+    if (!sameRepo) {
+      const rec = await dbGet(key);
+      if (!rec) {
+        // Repository not cached: pre-fill Explore field and ask the user.
+        $('#repoUrl').value = `https://github.com/${owner}/${repo}/tree/${branch}`;
+        setStatus(`Not cached: ${key}`, 'warn');
+        log(`Deep link: "${key}" is not in the cache — awaiting user confirmation`, 'warn');
+        // Don't re-show on every applyHash if the user already dismissed this exact link this page load.
+        if (_dismissedDeepLinkHash !== location.hash) {
+          showDeepLinkModal(key, h, owner, repo, branch);
+        }
+        return;
+      }
+      log(`Deep link: loading ${key} from cache…`, 'ok');
+      await loadFromCache(key);
+    }
+    if (h.file) {
+      await showFileModal(h.file, { line: h.line ? +h.line : 0 });
+    } else if (h.tex) {
+      if (h.zoom && ['fit','1','2','4','8','16','32'].includes(h.zoom)) texZoomMode = h.zoom;
+      openTextureModal(h.tex);
+    } else if (h.tab && TABS[h.tab]) {
+      tab = h.tab;
+      sel = h.sel && !isNaN(+h.sel) ? +h.sel : 0;
+      draw();
+    }
+  } catch (e) {
+    log(`Deep link apply failed: ${e.message}`, 'err');
+  } finally {
+    _applyingDeepLink = false;
+  }
+}
+
+function describeDeepLinkTarget(h) {
+  if (h.file) return h.file + (h.line ? ':' + h.line : '');
+  if (h.tex) return h.tex + (h.zoom && h.zoom !== 'fit' ? ' (zoom ' + h.zoom + '×)' : '');
+  if (h.tab && TABS[h.tab]) return TABS[h.tab] + (h.sel ? ' · entry #' + h.sel : '');
+  return 'the repository overview';
+}
+function showDeepLinkModal(key, hashData, owner, repo, branch) {
+  const modal = document.getElementById('deepLinkModal');
+  document.getElementById('deepLinkRepoName').textContent = key;
+  document.getElementById('deepLinkTarget').textContent = describeDeepLinkTarget(hashData);
+  _deepLinkPending = { key, hashData, owner, repo, branch };
+  modal.hidden = false;
+}
+
+async function copyCurrentLink() {
+  try {
+    await navigator.clipboard.writeText(location.href);
+    symToast('Link copied to clipboard', 1800);
+    log('Link copied: ' + location.href, 'ok');
+  } catch (e) {
+    symToast('Could not copy — use the address bar', 4000);
+  }
+}
 
 /* ============================================================
    INDEXEDDB CACHE
@@ -1420,7 +1597,6 @@ function buildTextureIndex() {
   const idx = { all: [], byFolder: Object.create(null), byBasename: Object.create(null),
                 mcmetaSet: new Set() };
   if (!Array.isArray(fileList)) return idx;
-  // Collect all .mcmeta paths in the repo so we can check existence without a fetch.
   for (const p of fileList) {
     if (typeof p === 'string' && p.endsWith('.mcmeta')) idx.mcmetaSet.add(p);
   }
@@ -1450,14 +1626,11 @@ function buildTextureIndex() {
   return idx;
 }
 
-/* frametime is in ticks; 1 tick = 50ms (Minecraft runs at 20 TPS). */
 function frameDurationMs(frametime, speed = 1) {
   return Math.max(10, (frametime * 50) / speed);
 }
-
 function parseMcmeta(txt) {
   try {
-    // 1.7.10 mcmeta files are JSON but sometimes have // comments or trailing commas.
     let clean = String(txt).replace(/\/\/[^\n]*/g, '').replace(/,\s*([}\]])/g, '$1');
     const j = JSON.parse(clean);
     const anim = j && j.animation;
@@ -1469,29 +1642,12 @@ function parseMcmeta(txt) {
     return { frametime, frames, interpolate: !!anim.interpolate };
   } catch { return null; }
 }
-
-/**
- * Return the parsed .mcmeta for a texture, or null if not available.
- *
- * mcmeta files are prefetched during explore() and stored in `files`
- * (which is cached alongside the rest of the mod). This function
- * NEVER fetches from GitHub — if the mcmeta is missing (e.g. an old
- * cache from before the prefetch existed), it returns null and the
- * caller falls back to 1 tick/frame, matching the spec.
- */
 async function getMcmeta(texPath) {
   if (!textureIndex || !textureIndex.mcmetaSet) return null;
   const mcPath = texPath + '.mcmeta';
   if (!textureIndex.mcmetaSet.has(mcPath)) return null;
   return files[mcPath] ? parseMcmeta(files[mcPath]) : null;
 }
-
-/**
- * Build the playback order (array of physical frame indices) from an mcmeta
- * `frames` list and the physical sheet size.
- * - `frames` from mcmeta, filtered to valid indices, if non-empty.
- * - else default `[0, 1, ..., sheetFrames-1]`.
- */
 function buildFrameOrder(sheetFrames, mcmeta) {
   if (mcmeta && mcmeta.frames && mcmeta.frames.length) {
     const filtered = mcmeta.frames.filter(n => n < sheetFrames);
@@ -1499,7 +1655,6 @@ function buildFrameOrder(sheetFrames, mcmeta) {
   }
   return Array.from({ length: sheetFrames }, (_, i) => i);
 }
-
 async function withTimeout(promise, ms, fallback) {
   return Promise.race([
     promise.catch(() => fallback),
@@ -1631,6 +1786,7 @@ function renderTexturesSection(entry, kind) {
    GITHUB
    ============================================================ */
 async function explore() {
+  const prior = parseHash();
   const url = $('#repoUrl').value.trim();
   if (!url) { log('Explore: empty URL', 'warn'); setStatus('Paste a GitHub URL first', 'warn'); return; }
   const parsed = parseRepoUrl(url);
@@ -1654,8 +1810,6 @@ async function explore() {
       log(`  · ${folder}: ${list.length} textures`, 'dim');
     }
 
-    // Prefetch all .mcmeta files so animation timing comes from the cache
-    // and never triggers a GitHub request when a texture is opened.
     if (textureIndex.mcmetaSet.size > 0) {
       const mcList = [...textureIndex.mcmetaSet];
       log(`Prefetching ${mcList.length} .mcmeta file(s)…`);
@@ -1677,6 +1831,28 @@ async function explore() {
     setStatus('Model reconstructed.', 'ok');
     draw();
     saveToCache().catch(e => log('Cache save error: ' + e.message, 'warn'));
+
+    // Restore prior deep-link view state (from before Explore was clicked) if the repo matches.
+    if (prior.repo) {
+      const m = prior.repo.match(/^([^/]+)\/([^@]+)(?:@(.+))?$/);
+      if (m && m[1] === repoMeta.owner && m[2] === repoMeta.repo && (m[3] || 'master') === repoMeta.branch) {
+        _applyingDeepLink = true;
+        try {
+          if (prior.file) await showFileModal(prior.file, { line: prior.line ? +prior.line : 0 });
+          else if (prior.tex) {
+            if (prior.zoom && ['fit','1','2','4','8','16','32'].includes(prior.zoom)) texZoomMode = prior.zoom;
+            openTextureModal(prior.tex);
+          } else if (prior.tab && TABS[prior.tab]) {
+            tab = prior.tab;
+            sel = prior.sel ? +prior.sel : 0;
+            draw();
+          }
+        } finally {
+          _applyingDeepLink = false;
+        }
+      }
+    }
+    syncHash();
   } catch (e) {
     const msg = (e && e.message) ? e.message : (e === undefined ? 'undefined' : (e === null ? 'null' : String(e)));
     const stk = (e && e.stack) ? e.stack : '';
@@ -2179,6 +2355,8 @@ async function showFileModal(path, opts = {}) {
     else if (!wasOpen) fileNav.stack = [];
   }
   fileNav.cur = { path, line: opts.line || 0 };
+  fileModalPath = path;
+  fileModalLine = opts.line || 0;
   updateBackBtn();
   document.getElementById('fileModalTitle').textContent = path;
   const { reverse, forward } = buildRelationIndex();
@@ -2211,7 +2389,7 @@ async function showFileModal(path, opts = {}) {
   const classified = findEntryByPath(path);
   if (classified) {
     gotoBtn.style.display = '';
-    gotoBtn.onclick = () => { tab = classified.tab; sel = classified.index; modal.hidden = true; draw(); };
+    gotoBtn.onclick = () => { tab = classified.tab; sel = classified.index; modal.hidden = true; fileModalPath = null; fileModalLine = 0; draw(); syncHash(); };
   } else {
     gotoBtn.style.display = 'none'; gotoBtn.onclick = null;
   }
@@ -2222,10 +2400,11 @@ async function showFileModal(path, opts = {}) {
   const viewerEl = host.querySelector('.code-viewer');
   await loadSourceIntoViewer(viewerEl);
   if (opts.line) gotoLine(viewerEl, opts.line);
+  syncHash();
 }
 
 /* ============================================================
-   TEXTURE MODAL + ANIMATION (mcmeta-aware, cache-only)
+   TEXTURE MODAL + ANIMATION
    ============================================================ */
 let texSpeed = 1;
 let texState = null;
@@ -2311,13 +2490,13 @@ function openTextureModal(path) {
 
   texState = null;
   texNaturalW = 16; texNaturalH = 16;
+  texModalPath = path;
   dimsEl.textContent = '';
   bar.hidden = true;
   cv.hidden = false; img.hidden = true;
   cv.width = 16; cv.height = 16;
   cv.getContext('2d').clearRect(0, 0, 16, 16);
 
-  // mcmeta is read from the cache only — no GitHub request at this point.
   const mcmetaPromise = getMcmeta(path);
 
   const loader = new Image();
@@ -2334,7 +2513,6 @@ function openTextureModal(path) {
     }
     const sheetFrames = (h > w && h % w === 0) ? h / w : 1;
     const defaultOrder = Array.from({ length: sheetFrames }, (_, i) => i);
-    // Set up the state with defaults so we can start animating immediately.
     texState = {
       img: loader,
       sheetFrames,
@@ -2355,9 +2533,6 @@ function openTextureModal(path) {
     dimsEl.textContent = sheetFrames > 1 ? `${w}×${h} · ${sheetFrames} frames` : `${w}×${h}`;
     applyTextureZoom();
 
-    // Upgrade to mcmeta values when available (this is an in-memory
-    // promise — it resolves on the next microtask because the mcmeta
-    // is already cached).
     if (sheetFrames > 1 && textureIndex && textureIndex.mcmetaSet.has(path + '.mcmeta')) {
       const mc = await withTimeout(mcmetaPromise, 200, null);
       if (token !== texLoadToken || !texState) return;
@@ -2395,12 +2570,14 @@ function openTextureModal(path) {
 
   modal.hidden = false;
   applyTextureZoom();
+  syncHash();
 }
 
 document.querySelectorAll('#textureModalZoomBar button').forEach(b => {
   b.addEventListener('click', () => {
     texZoomMode = b.dataset.texzoom;
     applyTextureZoom();
+    syncHash();
   });
 });
 document.getElementById('texPlay').addEventListener('click', () => {
@@ -2433,7 +2610,7 @@ window.addEventListener('resize', () => {
   if (m && !m.hidden) applyTextureZoom();
 });
 
-/* ----- animated thumbnails (grid, entry pages, search) + modal clock ----- */
+/* ----- animated thumbnails + modal clock ----- */
 const animThumbs = new Set();
 const thumbIO = ('IntersectionObserver' in window)
   ? new IntersectionObserver(entries => {
@@ -2445,8 +2622,6 @@ function upgradeThumb(img) {
   const w = img.naturalWidth, h = img.naturalHeight;
   if (!w || h <= w || h % w || /\.gif(\?|$)/i.test(img.currentSrc || img.src)) return;
   const sheetFrames = h / w;
-  // Use cached mcmeta when available. The mcmeta was prefetched during
-  // explore, so this is a pure in-memory read — no GitHub request.
   let frametime = 1, frameOrder = null, fromMcmeta = false;
   const repoPath = img.dataset.repoPath || '';
   if (repoPath && textureIndex && textureIndex.mcmetaSet) {
@@ -2525,102 +2700,106 @@ function setStatus(msg, cls) {
 const SIDEBAR_LIST_TABS = ['blocks', 'tes', 'items', 'ents'];
 
 function draw() {
-  const side = $('#side'), form = $('#form');
-  if (!side || !form) return;
+  try {
+    const side = $('#side'), form = $('#form');
+    if (!side || !form) return;
 
-  const tabButtons = Object.entries(TABS).map(([k, v]) =>
-    `<button data-tab="${k}" class="${k === tab ? 'on' : ''}">${v}</button>`
-  ).join('');
+    const tabButtons = Object.entries(TABS).map(([k, v]) =>
+      `<button data-tab="${k}" class="${k === tab ? 'on' : ''}">${v}</button>`
+    ).join('');
 
-  if (SIDEBAR_LIST_TABS.includes(tab) && Array.isArray(S[tab])) {
-    side.innerHTML = tabButtons +
-      '<hr style="border-color:var(--b);margin:8px 0;">' +
-      sideSearchHTML(tab, S[tab].length) +
-      sortBarHTML() +
-      '<div id="sideList">' + renderSidebarList(S[tab]) + '</div>';
-    bindSidebarSearch(side);
-  } else {
-    side.innerHTML = tabButtons;
-  }
+    if (SIDEBAR_LIST_TABS.includes(tab) && Array.isArray(S[tab])) {
+      side.innerHTML = tabButtons +
+        '<hr style="border-color:var(--b);margin:8px 0;">' +
+        sideSearchHTML(tab, S[tab].length) +
+        sortBarHTML() +
+        '<div id="sideList">' + renderSidebarList(S[tab]) + '</div>';
+      bindSidebarSearch(side);
+    } else {
+      side.innerHTML = tabButtons;
+    }
 
-  if (tab === 'overview') { drawOverview(form); return; }
-  if (tab === 'export')   { drawExport(form); return; }
-  if (tab === 'raw')      { drawRaw(form); bindListFilter(form, 'raw'); return; }
-  if (tab === 'mixins')   { drawMixins(form); bindListFilter(form, 'mixins'); return; }
-  if (tab === 'ieeps')    { drawIEEPs(form); bindListFilter(form, 'ieeps'); return; }
-  if (tab === 'textures') { drawTextures(form); return; }
+    if (tab === 'overview') { drawOverview(form); return; }
+    if (tab === 'export')   { drawExport(form); return; }
+    if (tab === 'raw')      { drawRaw(form); bindListFilter(form, 'raw'); return; }
+    if (tab === 'mixins')   { drawMixins(form); bindListFilter(form, 'mixins'); return; }
+    if (tab === 'ieeps')    { drawIEEPs(form); bindListFilter(form, 'ieeps'); return; }
+    if (tab === 'textures') { drawTextures(form); return; }
 
-  const arr = S[tab];
-  if (!arr || !arr.length) {
-    form.innerHTML = `<p class="note">Nothing parsed in <b>${TABS[tab]}</b>. Check <b>Raw / Unparsed</b>.</p>`;
-    return;
-  }
-  const o = arr[sel];
-  if (!o) { sel = 0; draw(); return; }
+    const arr = S[tab];
+    if (!arr || !arr.length) {
+      form.innerHTML = `<p class="note">Nothing parsed in <b>${TABS[tab]}</b>. Check <b>Raw / Unparsed</b>.</p>`;
+      return;
+    }
+    const o = arr[sel];
+    if (!o) { sel = 0; draw(); return; }
 
-  let h = `<h3>${esc(o.name || o.className || 'Item')} <span class="badge ${o.parsed ? 'parsed' : 'raw'}">${o.parsed ? 'parsed' : 'raw'}</span> <button class="del" data-act="del" style="float:right">Delete</button></h3>`;
-  h += `<p class="src">${esc(o.sourcePath || '')}</p>`;
+    let h = `<h3>${esc(o.name || o.className || 'Item')} <span class="badge ${o.parsed ? 'parsed' : 'raw'}">${o.parsed ? 'parsed' : 'raw'}</span> <button class="del" data-act="del" style="float:right">Delete</button></h3>`;
+    h += `<p class="src">${esc(o.sourcePath || '')}</p>`;
 
-  if (tab === 'blocks') {
-    h += `<div class="g">${fld('Name','name',o.name||'')}${fld('Registry name','registryName',o.registryName||'')}${fld('Material','material',o.material||'rock')}${fld('Hardness','hardness',o.hardness ?? 0,'number')}${fld('Resistance','resistance',o.resistance ?? 0,'number')}${fld('Harvest tool','harvestTool',o.harvestTool||'','select',['','pickaxe','axe','shovel'])}${fld('Harvest level','harvestLevel',o.harvestLevel ?? 0,'number')}</div>`;
-  }
-  if (tab === 'tes') {
-    h += `<div class="g">${fld('Name','name',o.name||'')}${fld('Class','className',o.className||'')}${fld('Package','package',o.package||'')}${fld('Slots','slots',o.slots ?? 0,'number')}</div>${fld('Has GUI','gui',!!o.gui,'check')}`;
-  }
-  if (tab === 'items') {
-    h += `<div class="g">${fld('Name','name',o.name||'')}${fld('Registry name','registryName',o.registryName||'')}${fld('Max stack','maxStack',o.maxStack ?? 64,'number')}</div>`;
-  }
-  if (tab === 'ents') {
-    h += `<div class="g">${fld('Name','name',o.name||'')}${fld('Class','className',o.className||'')}${fld('Registry name','registryName',o.registryName||'')}${fld('Health','hp',o.hp ?? 0,'number')}${fld('Speed','spd',o.spd ?? 0,'number')}</div>`;
-  }
+    if (tab === 'blocks') {
+      h += `<div class="g">${fld('Name','name',o.name||'')}${fld('Registry name','registryName',o.registryName||'')}${fld('Material','material',o.material||'rock')}${fld('Hardness','hardness',o.hardness ?? 0,'number')}${fld('Resistance','resistance',o.resistance ?? 0,'number')}${fld('Harvest tool','harvestTool',o.harvestTool||'','select',['','pickaxe','axe','shovel'])}${fld('Harvest level','harvestLevel',o.harvestLevel ?? 0,'number')}</div>`;
+    }
+    if (tab === 'tes') {
+      h += `<div class="g">${fld('Name','name',o.name||'')}${fld('Class','className',o.className||'')}${fld('Package','package',o.package||'')}${fld('Slots','slots',o.slots ?? 0,'number')}</div>${fld('Has GUI','gui',!!o.gui,'check')}`;
+    }
+    if (tab === 'items') {
+      h += `<div class="g">${fld('Name','name',o.name||'')}${fld('Registry name','registryName',o.registryName||'')}${fld('Max stack','maxStack',o.maxStack ?? 64,'number')}</div>`;
+    }
+    if (tab === 'ents') {
+      h += `<div class="g">${fld('Name','name',o.name||'')}${fld('Class','className',o.className||'')}${fld('Registry name','registryName',o.registryName||'')}${fld('Health','hp',o.hp ?? 0,'number')}${fld('Speed','spd',o.spd ?? 0,'number')}</div>`;
+    }
 
-  h += `<div class="textures-section">${renderTexturesSection(o, tab)}</div>`;
+    h += `<div class="textures-section">${renderTexturesSection(o, tab)}</div>`;
 
-  if (o.relatedFiles && o.relatedFiles.length) {
-    h += `<h3>Related files (${o.relatedFiles.length})</h3>
-      <div class="relations">${
-        o.relatedFiles.map(r => {
-          const found = findEntryByPath(r.path);
-          const badgeClass = found ? 'parsed' : 'raw';
-          return `<button class="rel-chip" data-relatedpath="${esc(r.path)}" title="${esc(r.path)}">
-            <span class="rel-name">${esc(r.path.split('/').pop())}</span>
-            <span class="badge ${badgeClass}">${found ? 'linked' : 'raw'}</span>
-            <span class="badge link">${esc(r.kind)}</span>
-          </button>`;
-        }).join('')
-      }</div>
-      <p class="note">Imports and naming patterns connect this entry to other files. Click any chip to view it.</p>`;
-  } else {
-    h += `<p class="note">No related files detected (no matching imports or naming patterns).</p>`;
-  }
+    if (o.relatedFiles && o.relatedFiles.length) {
+      h += `<h3>Related files (${o.relatedFiles.length})</h3>
+        <div class="relations">${
+          o.relatedFiles.map(r => {
+            const found = findEntryByPath(r.path);
+            const badgeClass = found ? 'parsed' : 'raw';
+            return `<button class="rel-chip" data-relatedpath="${esc(r.path)}" title="${esc(r.path)}">
+              <span class="rel-name">${esc(r.path.split('/').pop())}</span>
+              <span class="badge ${badgeClass}">${found ? 'linked' : 'raw'}</span>
+              <span class="badge link">${esc(r.kind)}</span>
+            </button>`;
+          }).join('')
+        }</div>
+        <p class="note">Imports and naming patterns connect this entry to other files. Click any chip to view it.</p>`;
+    } else {
+      h += `<p class="note">No related files detected (no matching imports or naming patterns).</p>`;
+    }
 
-  if (o.sourcePath) h += `<h3>Source</h3>${makeViewerHTML(o.sourcePath)}`;
-  h += `<p class="note">Partial reconstruction. Editing the fields above changes the model only.</p>`;
-  form.innerHTML = h;
+    if (o.sourcePath) h += `<h3>Source</h3>${makeViewerHTML(o.sourcePath)}`;
+    h += `<p class="note">Partial reconstruction. Editing the fields above changes the model only.</p>`;
+    form.innerHTML = h;
 
-  form.querySelectorAll('[data-k]').forEach(inp => {
-    inp.addEventListener('input', e => {
-      const k = e.target.dataset.k;
-      const target = S[tab][sel];
-      if (!target) return;
-      target[k] = e.target.type === 'checkbox' ? e.target.checked
-        : e.target.type === 'number' ? (parseFloat(e.target.value) || 0)
-        : e.target.value;
-      if (k === 'name' || k === 'className') {
-        const btn = side.querySelector(`[data-sel="${sel}"]`);
-        if (btn) btn.textContent = labelOf(target);
-      }
-      if (k === 'name' || k === 'className' || k === 'registryName') {
-        textureCache.delete(target.sourcePath);
-        const texSection = form.querySelector('.textures-section');
-        if (texSection) texSection.innerHTML = renderTexturesSection(target, tab);
-      }
+    form.querySelectorAll('[data-k]').forEach(inp => {
+      inp.addEventListener('input', e => {
+        const k = e.target.dataset.k;
+        const target = S[tab][sel];
+        if (!target) return;
+        target[k] = e.target.type === 'checkbox' ? e.target.checked
+          : e.target.type === 'number' ? (parseFloat(e.target.value) || 0)
+          : e.target.value;
+        if (k === 'name' || k === 'className') {
+          const btn = side.querySelector(`[data-sel="${sel}"]`);
+          if (btn) btn.textContent = labelOf(target);
+        }
+        if (k === 'name' || k === 'className' || k === 'registryName') {
+          textureCache.delete(target.sourcePath);
+          const texSection = form.querySelector('.textures-section');
+          if (texSection) texSection.innerHTML = renderTexturesSection(target, tab);
+        }
+      });
     });
-  });
 
-  if (o.sourcePath) {
-    const v = form.querySelector('.code-viewer');
-    if (v) loadSourceIntoViewer(v);
+    if (o.sourcePath) {
+      const v = form.querySelector('.code-viewer');
+      if (v) loadSourceIntoViewer(v);
+    }
+  } finally {
+    syncHash();
   }
 }
 
@@ -2686,7 +2865,7 @@ function drawOverview(f) {
     </p>
     <h3>Warnings (${warnings.length})</h3>
     ${warnings.length ? warnings.map(w => `<p class="warn">⚠ ${esc(w)}</p>`).join('') : '<p class="ok">None.</p>'}
-    <p class="note">Animated textures use <code>.mcmeta</code> frametimes (1 tick = 50ms), prefetched at explore time and cached alongside the mod. Missing mcmeta defaults to 1 tick/frame. Cached automatically after every explore.</p>
+    <p class="note">Animated textures use <code>.mcmeta</code> frametimes (1 tick = 50ms), prefetched at explore time and cached alongside the mod. Missing mcmeta defaults to 1 tick/frame. Click 🔗 in the header to copy a link to the current view.</p>
   `;
   f.querySelectorAll('[data-k]').forEach(inp => {
     inp.addEventListener('input', e => { S.mod[e.target.dataset.k] = e.target.value; });
@@ -2893,15 +3072,63 @@ document.getElementById('settingsReset').addEventListener('click', () => {
 document.getElementById('settingsPanel').addEventListener('click', e => {
   if (e.target.id === 'settingsPanel') closeSettings();
 });
-document.getElementById('fileModalClose').addEventListener('click', () =>
-  document.getElementById('fileModal').hidden = true);
-document.getElementById('fileModal').addEventListener('click', e => {
-  if (e.target.id === 'fileModal') document.getElementById('fileModal').hidden = true;
+document.getElementById('fileModalClose').addEventListener('click', () => {
+  document.getElementById('fileModal').hidden = true;
+  fileModalPath = null;
+  fileModalLine = 0;
+  syncHash();
 });
-document.getElementById('textureModalClose').addEventListener('click', () =>
-  document.getElementById('textureModal').hidden = true);
+document.getElementById('fileModal').addEventListener('click', e => {
+  if (e.target.id === 'fileModal') {
+    document.getElementById('fileModal').hidden = true;
+    fileModalPath = null;
+    fileModalLine = 0;
+    syncHash();
+  }
+});
+document.getElementById('textureModalClose').addEventListener('click', () => {
+  document.getElementById('textureModal').hidden = true;
+  texModalPath = null;
+  syncHash();
+});
 document.getElementById('textureModal').addEventListener('click', e => {
-  if (e.target.id === 'textureModal') document.getElementById('textureModal').hidden = true;
+  if (e.target.id === 'textureModal') {
+    document.getElementById('textureModal').hidden = true;
+    texModalPath = null;
+    syncHash();
+  }
+});
+
+/* Share buttons */
+document.getElementById('shareBtn').addEventListener('click', copyCurrentLink);
+document.getElementById('fileModalShare').addEventListener('click', copyCurrentLink);
+document.getElementById('textureModalShare').addEventListener('click', copyCurrentLink);
+
+/* Deep-link "not cached" modal */
+document.getElementById('deepLinkDownload').addEventListener('click', () => {
+  if (!_deepLinkPending) return;
+  const { owner, repo, branch } = _deepLinkPending;
+  document.getElementById('deepLinkModal').hidden = true;
+  $('#repoUrl').value = `https://github.com/${owner}/${repo}/tree/${branch}`;
+  log(`Deep link: downloading ${_deepLinkPending.key}…`, 'ok');
+  _deepLinkPending = null;
+  explore();
+});
+function dismissDeepLink() {
+  const modal = document.getElementById('deepLinkModal');
+  if (modal.hidden) return;
+  modal.hidden = true;
+  _dismissedDeepLinkHash = location.hash;
+  if (_deepLinkPending) {
+    setStatus(`Not cached: ${_deepLinkPending.key} — click Explore when ready`, 'warn');
+    log(`Deep link dismissed: ${_deepLinkPending.key} not downloaded`, 'dim');
+    _deepLinkPending = null;
+  }
+}
+document.getElementById('deepLinkCancel').addEventListener('click', dismissDeepLink);
+document.getElementById('deepLinkModalClose').addEventListener('click', dismissDeepLink);
+document.getElementById('deepLinkModal').addEventListener('click', e => {
+  if (e.target.id === 'deepLinkModal') dismissDeepLink();
 });
 
 /* cached modal buttons */
@@ -2933,7 +3160,7 @@ document.getElementById('importCacheFile').addEventListener('change', async e =>
 });
 
 /* ============================================================
-   SEARCH  (per-category filters + global search)
+   SEARCH
    ============================================================ */
 const catSearch = { blocks:'', tes:'', items:'', ents:'', mixins:'', ieeps:'', raw:'' };
 const CAT_NOUN = { blocks:'blocks', tes:'tile entities', items:'items', ents:'entities',
@@ -2956,7 +3183,6 @@ function hl(text, terms) {
   return str.split(re).map((part, i) => i % 2 ? '<mark class="gs-hl">' + esc(part) + '</mark>' : esc(part)).join('');
 }
 
-/* ----- sidebar search (Blocks / TEs / Items / Entities) ----- */
 function sideSearchHTML(key, total) {
   const v = catSearch[key] || '';
   return `<input id="catSearch" class="side-search" type="search" autocomplete="off" spellcheck="false"
@@ -2990,7 +3216,6 @@ function bindSidebarSearch(side) {
   });
 }
 
-/* ----- filter box for Mixins / IEEP / Raw lists ----- */
 function listFilterHTML(key) {
   return `<div class="list-filter">
     <input id="listFilter" type="search" autocomplete="off" spellcheck="false"
@@ -3022,7 +3247,6 @@ function bindListFilter(f, key) {
   apply();
 }
 
-/* ----- global search ----- */
 const GS_LIMIT = 8;
 let gsFlat = [];
 let gsActive = -1;
@@ -3468,11 +3692,13 @@ document.addEventListener('keydown', e => {
   const modal = document.getElementById('fileModal');
   const modalOpen = modal && !modal.hidden;
   if (e.key === 'Escape') {
+    const dlm = document.getElementById('deepLinkModal');
+    if (dlm && !dlm.hidden) { dismissDeepLink(); return; }
     const tm = document.getElementById('textureModal');
-    if (tm && !tm.hidden) { tm.hidden = true; return; }
+    if (tm && !tm.hidden) { tm.hidden = true; texModalPath = null; syncHash(); return; }
     const pk = document.getElementById('symPicker');
     if (pk && pk.classList.contains('show')) { hideSymPicker(); return; }
-    if (modalOpen) modal.hidden = true;
+    if (modalOpen) { modal.hidden = true; fileModalPath = null; fileModalLine = 0; syncHash(); }
   } else if (e.altKey && e.key === 'ArrowLeft' && modalOpen) {
     e.preventDefault(); fileModalBack();
   }
@@ -3617,7 +3843,12 @@ applySettings();
 updateCachedCount();
 log('GTNH Mod Explorer ready.', 'ok');
 if (!dbSupported) log('IndexedDB unavailable — caching disabled.', 'warn');
+window.addEventListener('hashchange', () => {
+  if (_updatingHash || _applyingDeepLink) return;
+  applyHash().catch(err => log('Deep link error: ' + err.message, 'err'));
+});
 draw();
+applyHash().catch(err => log('Deep link error: ' + err.message, 'err'));
 </script>
 <script>
 /* Disclaimer gate: the rest of the page is inert until the user acknowledges. */
